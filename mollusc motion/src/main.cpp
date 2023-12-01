@@ -105,6 +105,22 @@ void loop()
     }
   }
 
+  if (btn_b.fell())
+  {
+    Serial.println("Rebooting Dynamixels");
+    disableTorque();
+    enableLEDs();
+    delay(2000);
+    rebootDynamixels();
+    disableLEDs();
+    enableTorque();
+
+    delay(300);
+    enableLEDs();
+    delay(300);
+    disableLEDs();
+  }
+
   switch (state)
   {
   case IDLE:

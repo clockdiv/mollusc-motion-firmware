@@ -98,6 +98,36 @@ void enableTorque()
     dxl.writeControlTableItem(ControlTableItem::PROFILE_VELOCITY, BROADCAST_ID, 0);
 }
 
+void disableTorque()
+{
+    // Disable Torque on all Servos
+    for (uint8_t i = 0; i < DXL_ID_CNT; i++)
+    {
+        dxl.torqueOff(DXL_ID_LIST[i]);
+        // dxl.setOperatingMode(DXL_ID_LIST[i], OP_POSITION);
+    }
+
+    dxl.torqueOff(BROADCAST_ID);
+    dxl.writeControlTableItem(ControlTableItem::PROFILE_VELOCITY, BROADCAST_ID, 0);
+}
+
+void enableLEDs()
+{
+    dxl.ledOn(BROADCAST_ID);
+    // dxl.writeControlTableItem(ControlTableItem::LED, BROADCAST_ID, 1);
+}
+
+void disableLEDs()
+{
+    dxl.ledOff(BROADCAST_ID);
+    // dxl.writeControlTableItem(ControlTableItem::LED, BROADCAST_ID, 0);
+}
+
+void rebootDynamixels()
+{
+    dxl.reboot(BROADCAST_ID);
+}
+
 void prepareSyncRead()
 {
     // Fill the members of structure to syncRead using external user packet buffer
