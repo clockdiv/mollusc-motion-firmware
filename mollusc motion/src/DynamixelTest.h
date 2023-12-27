@@ -167,7 +167,7 @@ void prepareSyncWrite()
     sw_infos.is_info_changed = true;
 }
 
-void initDXL()
+void init_dxl()
 {
     // dxl.begin(57600);
     dxl.begin(2000000);

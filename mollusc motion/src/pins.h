@@ -49,6 +49,25 @@
 // Display
 // LiquidCrystal_I2C lcd(0x27, 20, 4); // set the LCD address to 0x27 for a 16 chars and 2 line display
 
+// SD-Card
+const int chipSelect = BUILTIN_SDCARD;
+File root;
+
+// NeoPixel LEDs
+const int numled = 16;
+const int pin = 24;
+byte drawingMemory[numled * 4];         //  4 bytes per LED for RGBW
+DMAMEM byte displayMemory[numled * 16]; // 16 bytes per LED for RGBW
+WS2812Serial leds(numled, displayMemory, drawingMemory, pin, WS2812_GRBW);
+#define RED 0x00FF0000
+#define GREEN 0x0000FF00
+#define BLUE 0x000000FF
+#define YELLOW 0x00FFD000
+#define PINK 0x44F00080
+#define ORANGE 0x00FF4200
+#define WHITE 0xAA000000
+
+
 // Stepper Motors
 AccelStepper stepper_1(AccelStepper::DRIVER, STEPPER_1_PULSE, STEPPER_1_DIR);
 AccelStepper stepper_2(AccelStepper::DRIVER, STEPPER_2_PULSE, STEPPER_2_DIR);

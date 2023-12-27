@@ -1,9 +1,15 @@
 #include <Arduino.h>
+#include <SD.h>
+#include <SPI.h>
+#include <WS2812Serial.h>
+
 #include "averageFilter.h"
 #include "pins.h"
 #include "display.h"
 #include "state.h"
 #include "steppers.h"
+#include "mm_sdcard.h"
+#include "mm_neopixel.h"
 
 #include "ReceiveSerialTest.h"
 #include "DirectDriveTest.h"
@@ -11,7 +17,23 @@
 
 void setup()
 {
+
   Serial.begin(500000);
+
+  while (!Serial)
+  {
+    ; // wait for serial port to connect.
+  }
+
+  delay(100);
+
+  init_sd();
+
+  delay(100);
+
+  log_sd("============================================================");
+  log_sd("starting board");
+  log_sd("============================================================");
 
   analogReadResolution(13);
 
@@ -51,7 +73,8 @@ void setup()
   end_3.interval(25);
   end_3.setPressedState(LOW);
 
-  initDXL();
+  init_dxl();
+  init_neopixels();
 
   for (int i = 0; i < 1024; i++)
   {
@@ -62,6 +85,8 @@ void setup()
   poti_b_old = poti_b;
 
   set_state(IDLE);
+
+  log_sd("setup done, starting mainloop");
 
   previous_millis = millis();
 }
@@ -75,6 +100,10 @@ void loop()
   end_1.update();
   end_2.update();
   end_3.update();
+
+  // fade neopixels
+  float neopixel_brightness = (sin(millis() / 500.0) + 1.0) / 2.0 * 55.0;
+  set_all_neopixels(WHITE, int(neopixel_brightness));
 
   // End-Switch / Button Test
   if (current_millis - previous_millis > 100)
@@ -92,7 +121,6 @@ void loop()
     // Serial.println(end_3.isPressed());
     previous_millis = current_millis;
   }
-
   if (btn_a.fell())
   {
     if (state == HOMING_A || state == HOMING_B)

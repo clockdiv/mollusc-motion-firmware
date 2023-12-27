@@ -1,6 +1,7 @@
 #ifndef STATE_H
 #define STATE_H
 
+#include "mm_sdcard.h"
 #include "display.h"
 #include "steppers.h"
 
@@ -15,62 +16,16 @@ enum State
 };
 State state = STARTUP, state_old = STARTUP;
 
-void print_state()
-{
-    Serial.print("NEW STATE: ");
-    switch (state)
-    {
-    case STARTUP:
-        Serial.println("STARTUP");
-        break;
-    case IDLE:
-        Serial.println("IDLE");
-        break;
-    case RUNNING:
-        Serial.println("RUNNING");
-        break;
-    case MANUAL:
-        Serial.println("MANUAL");
-        break;
-    case HOMING_A:
-        Serial.println("HOMING_A (Drive to end-switches).");
-        break;
-    case HOMING_B:
-        Serial.println("HOMING_B (Drive forward and set zero-position).");
-        break;
-    default:
-        break;
-    }
-}
+String states[] = {"STARTUP",
+                   "IDLE",
+                   "RUNNING",
+                   "MANUAL",
+                   "HOMING_A",
+                   "HOMING_B"};
 
-void print_state_lcd()
+String get_current_state_as_string()
 {
-    // lcd.clear();
-    // lcd.setCursor(0, 0);
-
-    // switch (state)
-    // {
-    // case STARTUP:
-    //     lcd.print("STARTUP");
-    //     break;
-    // case IDLE:
-    //     lcd.print("IDLE");
-    //     break;
-    // case RUNNING:
-    //     lcd.print("RUNNING");
-    //     break;
-    // case MANUAL:
-    //     lcd.print("MANUAL");
-    //     break;
-    // case HOMING_A:
-    //     lcd.print("HOMING_A");
-    //     break;
-    // case HOMING_B:
-    //     lcd.print("HOMING_B");
-    //     break;
-    // default:
-    //     break;
-    // }
+    return states[state];
 }
 
 void handle_state_change()
@@ -78,8 +33,7 @@ void handle_state_change()
     // Print, if we entered a new state
     if (state != state_old)
     {
-        print_state();
-        print_state_lcd();
+        log_sd("changed state to: " + get_current_state_as_string());
         switch (state)
         {
         case IDLE:
@@ -105,7 +59,10 @@ void handle_state_change()
 }
 void set_state(State new_state)
 {
+    log_sd("set_state()");
+    log_sd("current state: " + get_current_state_as_string());
     state = new_state;
+    log_sd("new state: " + get_current_state_as_string());
     handle_state_change();
 }
 
