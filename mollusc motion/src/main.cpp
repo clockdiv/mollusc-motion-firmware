@@ -8,7 +8,6 @@
 #include "display.h"
 #include "state.h"
 #include "steppers.h"
-#include "mm_sdcard.h"
 #include "mm_neopixel.h"
 
 #include "ReceiveSerialTest.h"
@@ -17,23 +16,18 @@
 
 void setup()
 {
-
   Serial.begin(500000);
 
-  while (!Serial)
-  {
-    ; // wait for serial port to connect.
-  }
+  delay(100);
+
+  SDCard.initSD();
+  SDCard.printAllFiles();
 
   delay(100);
 
-  init_sd();
-
-  delay(100);
-
-  log_sd("============================================================");
-  log_sd("starting board");
-  log_sd("============================================================");
+  // log_sd("============================================================");
+  // log_sd("starting board");
+  // log_sd("============================================================");
 
   analogReadResolution(13);
 
@@ -86,7 +80,7 @@ void setup()
 
   set_state(IDLE);
 
-  log_sd("setup done, starting mainloop");
+  // log_sd("setup done, starting mainloop");
 
   previous_millis = millis();
 }

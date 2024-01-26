@@ -6,6 +6,8 @@
 #include "Dynamixel2Arduino/Dynamixel2Arduino.h"
 // #include "LiquidCrystal_I2C/LiquidCrystal_I2C.h"
 #include "Bounce2/Bounce2.h"
+#include "Logger/Logger.h"
+#include "SDCardHelpers/SDCardHelpers.h"
 
 // Pins for Board Version 1.0
 // #define STEPPER_1_DIR 2
@@ -23,7 +25,7 @@
 // #define BTN_B 17
 // #define POTI_B 16
 
-// Pins for Board Version 2.0
+// Pins for Board Version 1.2
 // Stepper Motors:
 #define STEPPER_3_DIR 0
 #define STEPPER_3_PULSE 1
@@ -49,10 +51,6 @@
 // Display
 // LiquidCrystal_I2C lcd(0x27, 20, 4); // set the LCD address to 0x27 for a 16 chars and 2 line display
 
-// SD-Card
-const int chipSelect = BUILTIN_SDCARD;
-File root;
-
 // NeoPixel LEDs
 const int numled = 16;
 const int pin = 24;
@@ -66,7 +64,6 @@ WS2812Serial leds(numled, displayMemory, drawingMemory, pin, WS2812_GRBW);
 #define PINK 0x44F00080
 #define ORANGE 0x00FF4200
 #define WHITE 0xAA000000
-
 
 // Stepper Motors
 AccelStepper stepper_1(AccelStepper::DRIVER, STEPPER_1_PULSE, STEPPER_1_DIR);
@@ -147,5 +144,8 @@ float fps = 60;
 
 // Target Positions for Steppers and Servos
 long targetPositions[14];
+
+Logger Log;
+SDCardHelpers SDCard;
 
 #endif

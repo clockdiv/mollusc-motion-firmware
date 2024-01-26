@@ -1,7 +1,6 @@
 #ifndef STATE_H
 #define STATE_H
 
-#include "mm_sdcard.h"
 #include "display.h"
 #include "steppers.h"
 
@@ -33,7 +32,7 @@ void handle_state_change()
     // Print, if we entered a new state
     if (state != state_old)
     {
-        log_sd("changed state to: " + get_current_state_as_string());
+        // log_sd("changed state to: " + get_current_state_as_string());
         switch (state)
         {
         case IDLE:
@@ -59,10 +58,10 @@ void handle_state_change()
 }
 void set_state(State new_state)
 {
-    log_sd("set_state()");
-    log_sd("current state: " + get_current_state_as_string());
+    // log_sd("set_state()");
+    // log_sd("current state: " + get_current_state_as_string());
     state = new_state;
-    log_sd("new state: " + get_current_state_as_string());
+    // log_sd("new state: " + get_current_state_as_string());
     handle_state_change();
 }
 
