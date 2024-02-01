@@ -5,14 +5,13 @@
 
 #include "averageFilter.h"
 #include "pins.h"
-#include "display.h"
 #include "state.h"
 #include "steppers.h"
-#include "mm_neopixel.h"
+// #include "mm_neopixel.h"
 
 #include "ReceiveSerialTest.h"
-#include "DirectDriveTest.h"
-#include "DynamixelTest.h"
+// #include "DirectDriveTest.h"
+// #include "DynamixelTest.h"
 
 void setup()
 {
@@ -29,7 +28,7 @@ void setup()
   // log_sd("starting board");
   // log_sd("============================================================");
 
-  analogReadResolution(13);
+  // analogReadResolution(13);
 
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(STEPPER_ENABLE, OUTPUT);
@@ -67,8 +66,8 @@ void setup()
   end_3.interval(25);
   end_3.setPressedState(LOW);
 
-  init_dxl();
-  init_neopixels();
+  Dyna.init_dxl();
+  NeoPix.init();
 
   for (int i = 0; i < 1024; i++)
   {
@@ -97,7 +96,7 @@ void loop()
 
   // fade neopixels
   float neopixel_brightness = (sin(millis() / 500.0) + 1.0) / 2.0 * 55.0;
-  set_all_neopixels(WHITE, int(neopixel_brightness));
+  NeoPix.set_all(WHITE, int(neopixel_brightness));
 
   // End-Switch / Button Test
   if (current_millis - previous_millis > 100)
@@ -130,17 +129,17 @@ void loop()
   if (btn_b.fell())
   {
     Serial.println("Rebooting Dynamixels");
-    disableTorque();
-    enableLEDs();
+    Dyna.disableTorque();
+    Dyna.enableLEDs();
     delay(2000);
-    rebootDynamixels();
-    disableLEDs();
-    enableTorque();
+    Dyna.rebootDynamixels();
+    Dyna.disableLEDs();
+    Dyna.enableTorque();
 
     delay(300);
-    enableLEDs();
+    Dyna.enableLEDs();
     delay(300);
-    disableLEDs();
+    Dyna.disableLEDs();
   }
 
   switch (state)

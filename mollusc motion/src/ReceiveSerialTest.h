@@ -2,7 +2,7 @@
 #include "pins.h"
 #include "state.h"
 #include "averageFilter.h"
-#include "DynamixelTest.h"
+// #include "DynamixelTest.h"
 
 void debug_to_serial_full(String preText = "")
 {
@@ -70,8 +70,8 @@ void ReceiveSerial()
         {
             comma_separated_string_to_long_array(incomingString, targetPositions);
 
-            setNewStepperPositions();
-            setNewDynamixelPositions();
+            // setNewStepperPositions();
+            // setNewDynamixelPositions();
 
             if (state == RUNNING)
             {

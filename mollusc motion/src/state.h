@@ -1,7 +1,6 @@
 #ifndef STATE_H
 #define STATE_H
 
-#include "display.h"
 #include "steppers.h"
 
 enum State
