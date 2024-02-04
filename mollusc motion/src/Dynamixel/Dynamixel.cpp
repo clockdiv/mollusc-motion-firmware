@@ -1,30 +1,38 @@
-#ifndef DYNAMIXELTEST_H
-#define DYNAMIXELTEST_H
-#include <Arduino.h>
-#include "Dynamixel2Arduino/Dynamixel2Arduino.h"
-#include "pins.h"
+#include "Dynamixel.h"
 
-void setNewDynamixelPositions()
+constexpr uint8_t Dynamixel::DXL_ID_LIST[DXL_ID_CNT] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+uint8_t Dynamixel::user_pkt_buf[Dynamixel::user_pkt_buf_cap];
+Dynamixel2Arduino *Dynamixel::dxl;
+
+// Dynamixel::Dynamixel(HardwareSerial &port, int dir_pin)
+Dynamixel::Dynamixel(Dynamixel2Arduino &dxl)
+{
+    // dxl = Dynamixel2Arduino(Serial5, 22);
+    // dxl = Dynamixel2Arduino(port, dir_pin);
+    this->dxl = &dxl;
+}
+
+void Dynamixel::setNewDynamixelPositions()
 {
     // unsigned long dynamixelWriteDuration = micros();
     for (uint8_t i = 0; i < DXL_ID_CNT; i++)
     {
-        sw_data[i].goal_position = targetPositions[i + 3];
+        sw_data[i].goal_position = targetPositions[i];
     }
     // Update the SyncWrite packet status
     sw_infos.is_info_changed = true;
 
     // Build a SyncWrite Packet and transmit to DYNAMIXEL
-    if (!dxl.syncWrite(&sw_infos))
+    if (!dxl->syncWrite(&sw_infos))
     {
         Serial.print("[SyncWrite] Fail, Lib error code: ");
-        Serial.println(dxl.getLastLibErrCode());
+        Serial.println(dxl->getLastLibErrCode());
     }
     // dynamixelWriteDuration = micros() - dynamixelWriteDuration;
     // Serial.println(dynamixelWriteDuration);
 }
 
-void DynamixelTest()
+void Dynamixel::DynamixelTest()
 {
     if (current_millis - previous_millis > 2000)
     {
@@ -38,7 +46,7 @@ void DynamixelTest()
         sw_infos.is_info_changed = true;
 
         // Build a SyncWrite Packet and transmit to DYNAMIXEL
-        if (dxl.syncWrite(&sw_infos) == true)
+        if (dxl->syncWrite(&sw_infos) == true)
         {
             Serial.println("[SyncWrite] Success");
             for (uint8_t i = 0; i < sw_infos.xel_count; i++)
@@ -55,13 +63,13 @@ void DynamixelTest()
         else
         {
             Serial.print("[SyncWrite] Fail, Lib error code: ");
-            Serial.print(dxl.getLastLibErrCode());
+            Serial.print(dxl->getLastLibErrCode());
         }
         Serial.println();
 
         // Transmit predefined SyncRead instruction packet
         // and receive a status packet from each DYNAMIXEL
-        uint8_t recv_cnt = dxl.syncRead(&sr_infos);
+        uint8_t recv_cnt = dxl->syncRead(&sr_infos);
         if (recv_cnt > 0)
         {
             Serial.print("[SyncRead] Success, Received ID Count: ");
@@ -79,56 +87,56 @@ void DynamixelTest()
         else
         {
             Serial.print("[SyncRead] Fail, Lib error code: ");
-            Serial.println(dxl.getLastLibErrCode());
+            Serial.println(dxl->getLastLibErrCode());
         }
         Serial.println("=======================================================");
         previous_millis = current_millis;
     }
 }
 
-void enableTorque()
+void Dynamixel::enableTorque()
 {
     // Enable Torque on all Servos
     for (uint8_t i = 0; i < DXL_ID_CNT; i++)
     {
-        dxl.torqueOff(DXL_ID_LIST[i]);
-        dxl.setOperatingMode(DXL_ID_LIST[i], OP_POSITION);
+        dxl->torqueOff(DXL_ID_LIST[i]);
+        dxl->setOperatingMode(DXL_ID_LIST[i], OP_POSITION);
     }
-    dxl.torqueOn(BROADCAST_ID);
-    dxl.writeControlTableItem(ControlTableItem::PROFILE_VELOCITY, BROADCAST_ID, 0);
+    dxl->torqueOn(BROADCAST_ID);
+    dxl->writeControlTableItem(ControlTableItem::PROFILE_VELOCITY, BROADCAST_ID, 0);
 }
 
-void disableTorque()
+void Dynamixel::disableTorque()
 {
     // Disable Torque on all Servos
     for (uint8_t i = 0; i < DXL_ID_CNT; i++)
     {
-        dxl.torqueOff(DXL_ID_LIST[i]);
+        dxl->torqueOff(DXL_ID_LIST[i]);
         // dxl.setOperatingMode(DXL_ID_LIST[i], OP_POSITION);
     }
 
-    dxl.torqueOff(BROADCAST_ID);
-    dxl.writeControlTableItem(ControlTableItem::PROFILE_VELOCITY, BROADCAST_ID, 0);
+    dxl->torqueOff(BROADCAST_ID);
+    dxl->writeControlTableItem(ControlTableItem::PROFILE_VELOCITY, BROADCAST_ID, 0);
 }
 
-void enableLEDs()
+void Dynamixel::enableLEDs()
 {
-    dxl.ledOn(BROADCAST_ID);
+    dxl->ledOn(BROADCAST_ID);
     // dxl.writeControlTableItem(ControlTableItem::LED, BROADCAST_ID, 1);
 }
 
-void disableLEDs()
+void Dynamixel::disableLEDs()
 {
-    dxl.ledOff(BROADCAST_ID);
+    dxl->ledOff(BROADCAST_ID);
     // dxl.writeControlTableItem(ControlTableItem::LED, BROADCAST_ID, 0);
 }
 
-void rebootDynamixels()
+void Dynamixel::rebootDynamixels()
 {
-    dxl.reboot(BROADCAST_ID);
+    dxl->reboot(BROADCAST_ID);
 }
 
-void prepareSyncRead()
+void Dynamixel::prepareSyncRead()
 {
     // Fill the members of structure to syncRead using external user packet buffer
     sr_infos.packet.p_buf = user_pkt_buf;
@@ -148,7 +156,7 @@ void prepareSyncRead()
     sr_infos.is_info_changed = true;
 }
 
-void prepareSyncWrite()
+void Dynamixel::prepareSyncWrite()
 {
     // Fill the members of structure to syncWrite using internal packet buffer
     sw_infos.packet.p_buf = nullptr;
@@ -167,11 +175,11 @@ void prepareSyncWrite()
     sw_infos.is_info_changed = true;
 }
 
-void initDXL()
+void Dynamixel::init_dxl()
 {
     // dxl.begin(57600);
-    dxl.begin(2000000);
-    dxl.setPortProtocolVersion(DXL_PROTOCOL_VERSION);
+    dxl->begin(2000000);
+    dxl->setPortProtocolVersion(DXL_PROTOCOL_VERSION);
 
     enableTorque();
     prepareSyncRead();
@@ -186,5 +194,3 @@ void initDXL()
     // // Limit the maximum velocity in Position Control Mode. Use 0 for Max speed
     // dxl.writeControlTableItem(ControlTableItem::PROFILE_VELOCITY, ID, 30);
 }
-
-#endif
