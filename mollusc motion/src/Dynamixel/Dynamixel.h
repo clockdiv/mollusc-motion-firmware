@@ -63,12 +63,12 @@ private:
     unsigned long current_millis;
     unsigned long previous_millis;
 
-    long targetPositions[11];
+    // long targetPositions[11];
 
 public:
     // Dynamixel(HardwareSerial &port, int dir_pin);
     Dynamixel(Dynamixel2Arduino &dxl);
-    void setNewDynamixelPositions();
+    void setNewDynamixelPositions(long *targetPositions);
     void DynamixelTest();
     void enableTorque();
     void disableTorque();

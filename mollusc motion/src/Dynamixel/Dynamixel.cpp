@@ -12,7 +12,7 @@ Dynamixel::Dynamixel(Dynamixel2Arduino &dxl)
     this->dxl = &dxl;
 }
 
-void Dynamixel::setNewDynamixelPositions()
+void Dynamixel::setNewDynamixelPositions(long *targetPositions)
 {
     // unsigned long dynamixelWriteDuration = micros();
     for (uint8_t i = 0; i < DXL_ID_CNT; i++)

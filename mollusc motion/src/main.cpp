@@ -3,39 +3,33 @@
 #include <SPI.h>
 #include <WS2812Serial.h>
 
-#include "averageFilter.h"
-// #include "pins.h"
 #include <Bounce2.h>
-#include "averageFilter.h"
 
 #include "Logger/Logger.h"
 #include "SDCardHelpers/SDCardHelpers.h"
 #include "Dynamixel/Dynamixel.h"
 #include "NeoPixels/NeoPixels.h"
 #include "StepperWrapper/StepperWrapper.h"
-#include "SerialHandler/SerialHandler.h"
+#include "SerialDataHandler/SerialDataHandler.h"
+#include "StateManager/StateManager.h"
 
-#include "state.h"
-// #include "steppers.h"
-// #include "mm_neopixel.h"
-
-// #include "ReceiveSerialTest.h"
-// #include "DirectDriveTest.h"
-// #include "DynamixelTest.h"
+#include "averageFilter.h"
 
 #define BTN_A 16
 #define BTN_B 17
+#define DYNAMIXEL_COMM_DIR 22
 
 Bounce2::Button btn_a;
 Bounce2::Button btn_b;
 
-Logger Log;
-SDCardHelpers SDCard;
-Dynamixel2Arduino my_dxl(Serial5, 22);
-Dynamixel Dyna(my_dxl);
-NeoPixels NeoPix;
+Logger logger;
+SDCardHelpers sdCardHelpers;
+Dynamixel2Arduino dxl(Serial5, DYNAMIXEL_COMM_DIR);
+Dynamixel dynamixel(dxl);
+NeoPixels neoPixels;
 StepperWrapper stepperWrapper;
-SerialHandler serialHandler;
+SerialDataHandler serialDataHandler;
+StateManager stateManager;
 
 unsigned long current_millis, previous_millis;
 
@@ -45,8 +39,8 @@ void setup()
 
   delay(100);
 
-  SDCard.initSD();
-  SDCard.printAllFiles();
+  sdCardHelpers.initSD();
+  sdCardHelpers.printAllFiles();
 
   delay(100);
 
@@ -81,8 +75,8 @@ void setup()
   // end_3.interval(25);
   // end_3.setPressedState(LOW);
 
-  Dyna.init_dxl();
-  NeoPix.init();
+  dynamixel.init_dxl();
+  neoPixels.init();
 
   // for (int i = 0; i < 1024; i++)
   // {
@@ -92,7 +86,7 @@ void setup()
   // poti_a_old = poti_a;
   // poti_b_old = poti_b;
 
-  set_state(IDLE);
+  stateManager.setState(IDLE);
 
   // log_sd("setup done, starting mainloop");
 
@@ -107,11 +101,41 @@ void loop()
   btn_b.update();
   stepperWrapper.updateEndSwitches();
 
+  if (serialDataHandler.receiveAsCSV())
+  {
+    switch (serialDataHandler.serialData.command)
+    {
+    case SerialCommand::STATE_CHANGE:
+      // setState(serialDataHandler.serialData.stateAsString); TODO
+      break;
+
+    case SerialCommand::POSITION_DATA:
+      stepperWrapper.setNewStepperPositions(serialDataHandler.serialData.targetPositionsSteppers);
+      dynamixel.setNewDynamixelPositions(serialDataHandler.serialData.targetPositionsServos);
+      //     if (state == RUNNING)
+      //     {
+      //         // TODO enable again!
+      //         float speed_stepper_1 = stepper_1_speed_filtered.filter(fps * float(stepper_1.distanceToGo()) * 0.1f);
+      //         stepper_1.setSpeed(speed_stepper_1);
+      //         // TODO enable again!
+      //         float speed_stepper_2 = stepper_2_speed_filtered.filter(fps * float(stepper_2.distanceToGo()) * 0.1f);
+      //         stepper_2.setSpeed(speed_stepper_2);
+      //         // TODO enable again!
+      //         float speed_stepper_3 = stepper_3_speed_filtered.filter(fps * float(stepper_3.distanceToGo()) * 0.1f);
+      //         stepper_3.setSpeed(speed_stepper_3);
+      //     }
+
+      break;
+
+    default:
+      break;
+    }
+  }
+
   // fade neopixels
   float neopixel_brightness = (sin(millis() / 500.0) + 1.0) / 2.0 * 55.0;
-  NeoPix.set_all(WHITE, int(neopixel_brightness));
+  neoPixels.set_all(WHITE, int(neopixel_brightness));
 
-  // End-Switch / Button Test
   if (current_millis - previous_millis > 100)
   {
     // Serial.print(current_millis);
@@ -129,39 +153,39 @@ void loop()
   }
   if (btn_a.fell())
   {
-    if (state == HOMING_A || state == HOMING_B)
+    if (stateManager.getState() == HOMING_A || stateManager.getState() == HOMING_B)
     {
-      set_state(IDLE);
+      stateManager.setState(States::IDLE);
     }
     else
     {
-      set_state(HOMING_A);
+      stateManager.setState(States::HOMING_A);
     }
   }
 
   if (btn_b.fell())
   {
     Serial.println("Rebooting Dynamixels");
-    Dyna.disableTorque();
-    Dyna.enableLEDs();
+    dynamixel.disableTorque();
+    dynamixel.enableLEDs();
     delay(2000);
-    Dyna.rebootDynamixels();
-    Dyna.disableLEDs();
-    Dyna.enableTorque();
+    dynamixel.rebootDynamixels();
+    dynamixel.disableLEDs();
+    dynamixel.enableTorque();
 
     delay(300);
-    Dyna.enableLEDs();
+    dynamixel.enableLEDs();
     delay(300);
-    Dyna.disableLEDs();
+    dynamixel.disableLEDs();
   }
 
-  switch (state)
+  switch (stateManager.getState())
   {
-  case IDLE:
-    serialHandler.receive();
+  case States::IDLE:
+    serialDataHandler.receiveAsCSV();
     break;
-  case RUNNING:
-    serialHandler.receive();
+  case States::RUNNING:
+    serialDataHandler.receiveAsCSV();
     /* runSpeed(): Poll the motor and step it if a step is due, implementing a constant
                    speed as set by the most recent call to setSpeed().
                    You must call this as frequently as possible, but at least once per step interval.
@@ -175,8 +199,8 @@ void loop()
     // stepper_3.runSpeedToPosition();
     stepperWrapper.runAllSpeedToPositions();
     break;
-  case MANUAL:
-    serialHandler.receive();
+  case States::MANUAL:
+    serialDataHandler.receiveAsCSV();
     /* run(): Poll the motor and step it if a step is due, implementing accelerations and decelerations to achieve the target position.
        You must call this as frequently as possible, but at least once per minimum step time interval, preferably in your main loop.
        Note that each call to run() will make at most one step, and then only when a step is due, based on the current speed and the time since the last step. */
@@ -186,17 +210,17 @@ void loop()
     // stepper_3.run();
     stepperWrapper.runAll();
     break;
-  case HOMING_A:
+  case States::HOMING_A:
     if (stepperWrapper.driveHoming_A())
     {
-      set_state(HOMING_B);
+      stateManager.setState(States::HOMING_B);
     }
     break;
-  case HOMING_B:
+  case States::HOMING_B:
     if (stepperWrapper.driveHoming_B())
     {
       stepperWrapper.zeroPositions();
-      set_state(IDLE);
+      stateManager.setState(States::IDLE);
     }
     break;
   default:

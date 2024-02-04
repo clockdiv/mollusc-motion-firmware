@@ -42,7 +42,7 @@ void StepperWrapper::zeroPositions()
     stepper_3.setCurrentPosition(0);
 }
 
-void StepperWrapper::setNewStepperPositions()
+void StepperWrapper::setNewStepperPositions(long *targetPositions)
 {
     // Serial.printf("Stepper 1 target pos: %d\n", targetPositions[0]);
 

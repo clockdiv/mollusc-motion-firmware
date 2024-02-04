@@ -48,12 +48,12 @@ private:
 
     unsigned int minPulseWidth = 3;
 
-    long targetPositions[3];
+    // long targetPositions[3];
 
 public:
     StepperWrapper();
     void zeroPositions();
-    void setNewStepperPositions();
+    void setNewStepperPositions(long *targetPositions);
     void initIdle();
     void initRunning();
     void initManual();
