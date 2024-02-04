@@ -2,7 +2,8 @@
 #define DYNAMIXEL_H
 
 #include <Arduino.h>
-#include "../Dynamixel2Arduino/Dynamixel2Arduino.h"
+// #include "../Dynamixel2Arduino/Dynamixel2Arduino.h"
+#include <Dynamixel2Arduino.h>
 // #include "pins.h"
 
 // Dynamixel Servos
@@ -18,7 +19,7 @@ private:
     // static String DXL_SERIAL;
 
     static constexpr float DXL_PROTOCOL_VERSION = 2.0;
-    static const uint8_t DXL_DIR_PIN = 22;
+    // static const uint8_t DXL_DIR_PIN = 22;
     // static String DXL_SERIAL = "Serial5";
 
     static const uint8_t BROADCAST_ID = 254;
@@ -53,7 +54,7 @@ private:
     DYNAMIXEL::XELInfoSyncWrite_t info_xels_sw[DXL_ID_CNT];
 
     // const Dynamixel2Arduino dxl(Serial5, 22);
-    static Dynamixel2Arduino dxl;
+    static Dynamixel2Arduino *dxl;
 
     static const uint8_t goal_position_count = 4;                                                       // temporary for test
     static constexpr int32_t goal_position[goal_position_count] = {2048, 2048 - 256, 2048, 2048 + 256}; // temporary for test
@@ -65,7 +66,8 @@ private:
     long targetPositions[11];
 
 public:
-    Dynamixel();
+    // Dynamixel(HardwareSerial &port, int dir_pin);
+    Dynamixel(Dynamixel2Arduino &dxl);
     void setNewDynamixelPositions();
     void DynamixelTest();
     void enableTorque();

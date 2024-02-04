@@ -11,7 +11,7 @@ NeoPixels::NeoPixels()
 
 NeoPixels::~NeoPixels()
 {
-    delete(leds);
+    delete (leds);
 }
 
 void NeoPixels::init()

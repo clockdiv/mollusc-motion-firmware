@@ -35,19 +35,19 @@ void handle_state_change()
         switch (state)
         {
         case IDLE:
-            initIdle();
+            // initIdle(); // TODO enable again!
             break;
         case RUNNING:
-            initRunning();
+            // initRunning();// TODO enable again!
             break;
         case MANUAL:
-            initManual();
+            // initManual();// TODO enable again!
             break;
         case HOMING_A:
-            initHoming_A();
+            // initHoming_A();// TODO enable again!
             break;
         case HOMING_B:
-            initHoming_B();
+            // initHoming_B();// TODO enable again!
             break;
         default:
             break;
