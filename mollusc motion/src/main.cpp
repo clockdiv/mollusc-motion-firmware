@@ -1,100 +1,67 @@
 #include <Arduino.h>
-#include <SD.h>
-#include <SPI.h>
-#include <WS2812Serial.h>
-
 #include "averageFilter.h"
-// #include "pins.h"
-#include <Bounce2.h>
-#include "averageFilter.h"
-
-#include "Logger/Logger.h"
-#include "SDCardHelpers/SDCardHelpers.h"
-#include "Dynamixel/Dynamixel.h"
-#include "NeoPixels/NeoPixels.h"
-#include "StepperWrapper/StepperWrapper.h"
-#include "SerialHandler/SerialHandler.h"
-
+#include "pins.h"
+#include "display.h"
 #include "state.h"
-// #include "steppers.h"
-// #include "mm_neopixel.h"
+#include "steppers.h"
 
-// #include "ReceiveSerialTest.h"
-// #include "DirectDriveTest.h"
-// #include "DynamixelTest.h"
-
-#define BTN_A 16
-#define BTN_B 17
-
-Bounce2::Button btn_a;
-Bounce2::Button btn_b;
-
-Logger Log;
-SDCardHelpers SDCard;
-Dynamixel2Arduino my_dxl(Serial5, 22);
-Dynamixel Dyna(my_dxl);
-NeoPixels NeoPix;
-StepperWrapper stepperWrapper;
-SerialHandler serialHandler;
-
-unsigned long current_millis, previous_millis;
+#include "ReceiveSerialTest.h"
+#include "DirectDriveTest.h"
+#include "DynamixelTest.h"
 
 void setup()
 {
   Serial.begin(500000);
 
-  delay(100);
-
-  SDCard.initSD();
-  SDCard.printAllFiles();
-
-  delay(100);
-
-  // log_sd("============================================================");
-  // log_sd("starting board");
-  // log_sd("============================================================");
-
-  // analogReadResolution(13);
+  analogReadResolution(13);
 
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(STEPPER_ENABLE, OUTPUT);
   digitalWriteFast(LED_BUILTIN, LOW);
+  digitalWriteFast(STEPPER_ENABLE, LOW);
 
-  btn_a = Bounce2::Button();
-  btn_b = Bounce2::Button();
+  stepper_1.setMinPulseWidth(minPulseWidth);
+  stepper_1.setPinsInverted(false, false, false); // direction, step, enabled
+
+  stepper_2.setMinPulseWidth(minPulseWidth);
+  stepper_2.setPinsInverted(true, false, false); // direction, step, enabled
+
+  stepper_3.setMinPulseWidth(minPulseWidth);
+  stepper_3.setPinsInverted(false, false, false); // direction, step, enabled
+
+  digitalWriteFast(STEPPER_ENABLE, LOW); // enable all steppers
+
   btn_a.attach(BTN_A, INPUT_PULLUP);
   btn_a.interval(25);
   btn_a.setPressedState(LOW);
+
   btn_b.attach(BTN_B, INPUT_PULLUP);
   btn_b.interval(25);
   btn_b.setPressedState(LOW);
 
-  // end_1.attach(STEPPER_1_END, INPUT_PULLUP);
-  // end_1.interval(25);
-  // end_1.setPressedState(LOW);
+  end_1.attach(STEPPER_1_END, INPUT_PULLUP);
+  end_1.interval(25);
+  end_1.setPressedState(LOW);
 
-  // end_2.attach(STEPPER_2_END, INPUT_PULLUP);
-  // end_2.interval(25);
-  // end_2.setPressedState(LOW);
+  end_2.attach(STEPPER_2_END, INPUT_PULLUP);
+  end_2.interval(25);
+  end_2.setPressedState(LOW);
 
-  // end_3.attach(STEPPER_3_END, INPUT_PULLUP);
-  // end_3.interval(25);
-  // end_3.setPressedState(LOW);
+  end_3.attach(STEPPER_3_END, INPUT_PULLUP);
+  end_3.interval(25);
+  end_3.setPressedState(LOW);
 
-  Dyna.init_dxl();
-  NeoPix.init();
+  initDXL();
 
-  // for (int i = 0; i < 1024; i++)
-  // {
-  //   poti_a = poti_a_filtered.filter(analogRead(POTI_A));
-  //   poti_b = poti_b_filtered.filter(analogRead(POTI_B));
-  // }
-  // poti_a_old = poti_a;
-  // poti_b_old = poti_b;
+  for (int i = 0; i < 1024; i++)
+  {
+    poti_a = poti_a_filtered.filter(analogRead(POTI_A));
+    poti_b = poti_b_filtered.filter(analogRead(POTI_B));
+  }
+  poti_a_old = poti_a;
+  poti_b_old = poti_b;
 
   set_state(IDLE);
-
-  // log_sd("setup done, starting mainloop");
 
   previous_millis = millis();
 }
@@ -105,11 +72,9 @@ void loop()
 
   btn_a.update();
   btn_b.update();
-  stepperWrapper.updateEndSwitches();
-
-  // fade neopixels
-  float neopixel_brightness = (sin(millis() / 500.0) + 1.0) / 2.0 * 55.0;
-  NeoPix.set_all(WHITE, int(neopixel_brightness));
+  end_1.update();
+  end_2.update();
+  end_3.update();
 
   // End-Switch / Button Test
   if (current_millis - previous_millis > 100)
@@ -127,6 +92,7 @@ void loop()
     // Serial.println(end_3.isPressed());
     previous_millis = current_millis;
   }
+
   if (btn_a.fell())
   {
     if (state == HOMING_A || state == HOMING_B)
@@ -142,26 +108,26 @@ void loop()
   if (btn_b.fell())
   {
     Serial.println("Rebooting Dynamixels");
-    Dyna.disableTorque();
-    Dyna.enableLEDs();
+    disableTorque();
+    enableLEDs();
     delay(2000);
-    Dyna.rebootDynamixels();
-    Dyna.disableLEDs();
-    Dyna.enableTorque();
+    rebootDynamixels();
+    disableLEDs();
+    enableTorque();
 
     delay(300);
-    Dyna.enableLEDs();
+    enableLEDs();
     delay(300);
-    Dyna.disableLEDs();
+    disableLEDs();
   }
 
   switch (state)
   {
   case IDLE:
-    serialHandler.receive();
+    ReceiveSerial();
     break;
   case RUNNING:
-    serialHandler.receive();
+    ReceiveSerial();
     /* runSpeed(): Poll the motor and step it if a step is due, implementing a constant
                    speed as set by the most recent call to setSpeed().
                    You must call this as frequently as possible, but at least once per step interval.
@@ -170,32 +136,31 @@ void loop()
                              needs to be called often just like runSpeed() or run().
                              Will step the motor if a step is required at the currently selected speed
                              unless the target position has been reached. Does not implement accelerations. */
-    // stepper_1.runSpeedToPosition();
-    // stepper_2.runSpeedToPosition();
-    // stepper_3.runSpeedToPosition();
-    stepperWrapper.runAllSpeedToPositions();
+    stepper_1.runSpeedToPosition();
+    stepper_2.runSpeedToPosition();
+    stepper_3.runSpeedToPosition();
+
     break;
   case MANUAL:
-    serialHandler.receive();
+    ReceiveSerial();
     /* run(): Poll the motor and step it if a step is due, implementing accelerations and decelerations to achieve the target position.
        You must call this as frequently as possible, but at least once per minimum step time interval, preferably in your main loop.
        Note that each call to run() will make at most one step, and then only when a step is due, based on the current speed and the time since the last step. */
 
-    // stepper_1.run();
-    // stepper_2.run();
-    // stepper_3.run();
-    stepperWrapper.runAll();
+    stepper_1.run();
+    stepper_2.run();
+    stepper_3.run();
     break;
   case HOMING_A:
-    if (stepperWrapper.driveHoming_A())
+    if (driveHoming_A())
     {
       set_state(HOMING_B);
     }
     break;
   case HOMING_B:
-    if (stepperWrapper.driveHoming_B())
+    if (driveHoming_B())
     {
-      stepperWrapper.zeroPositions();
+      zeroPositions();
       set_state(IDLE);
     }
     break;
@@ -203,9 +168,8 @@ void loop()
     break;
   }
 
-  // Enable LED_BUILTIN when a stepper is in running
-  // TODO Enable again:
-  // digitalWriteFast(LED_BUILTIN, stepper_1.isRunning() || stepper_2.isRunning() || stepper_3.isRunning());
+  // Enable LED_BUILTIN when a stepper is running
+  digitalWriteFast(LED_BUILTIN, stepper_1.isRunning() || stepper_2.isRunning() || stepper_3.isRunning());
 
   // handle_current_state();
 }

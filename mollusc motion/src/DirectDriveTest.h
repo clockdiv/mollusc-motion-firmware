@@ -1,9 +1,9 @@
 /* Test to drive the Steppers from the build-in Potentiometers. */
 
-// #include <Arduino.h>
-// #include "pins.h"
-// #include "display.h"
-// #include "averageFilter.h"
+#include <Arduino.h>
+#include "pins.h"
+#include "display.h"
+#include "averageFilter.h"
 
 // void DirectDriveTest()
 // {
