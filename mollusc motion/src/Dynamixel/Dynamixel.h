@@ -13,15 +13,13 @@
 class Dynamixel
 {
 private:
-    uint8_t DXL_ID = 0;
-    // static uint8_t DXL_DIR_PIN;
-    // static const float DXL_PROTOCOL_VERSION = 2.0;
-    // static String DXL_SERIAL;
-
-    static constexpr float DXL_PROTOCOL_VERSION = 2.0;
     // static const uint8_t DXL_DIR_PIN = 22;
     // static String DXL_SERIAL = "Serial5";
+    // const Dynamixel2Arduino dxl(Serial5, 22);
 
+    static Dynamixel2Arduino *dxl;
+
+    static constexpr float DXL_PROTOCOL_VERSION = 2.0;
     static const uint8_t BROADCAST_ID = 254;
     static const uint8_t DXL_ID_CNT = 11;
     static const uint8_t DXL_ID_LIST[DXL_ID_CNT];
@@ -52,18 +50,6 @@ private:
     sw_data_t sw_data[DXL_ID_CNT]; // Sync Write Data
     DYNAMIXEL::InfoSyncWriteInst_t sw_infos;
     DYNAMIXEL::XELInfoSyncWrite_t info_xels_sw[DXL_ID_CNT];
-
-    // const Dynamixel2Arduino dxl(Serial5, 22);
-    static Dynamixel2Arduino *dxl;
-
-    static const uint8_t goal_position_count = 4;                                                       // temporary for test
-    static constexpr int32_t goal_position[goal_position_count] = {2048, 2048 - 256, 2048, 2048 + 256}; // temporary for test
-    uint8_t goal_position_index = 0;
-
-    unsigned long current_millis;
-    unsigned long previous_millis;
-
-    // long targetPositions[11];
 
 public:
     // Dynamixel(HardwareSerial &port, int dir_pin);

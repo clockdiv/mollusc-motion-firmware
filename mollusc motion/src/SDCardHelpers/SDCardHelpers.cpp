@@ -1,13 +1,14 @@
 #include "SDCardHelpers.h"
 
-void SDCardHelpers::initSD()
+bool SDCardHelpers::initSD()
 {
     if (!SD.begin(chipSelect))
     {
         Serial.println("initialization failed!");
-        return;
+        return false;
     }
     Serial.println("initialization done.");
+    return true;
 }
 
 void SDCardHelpers::printDirectory(File dir, int numTabs)

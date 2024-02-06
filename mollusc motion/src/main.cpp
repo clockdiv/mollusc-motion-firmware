@@ -13,6 +13,7 @@
 #include "SerialDataHandler/SerialDataHandler.h"
 #include "StateManager/StateManager.h"
 #include "TimeWrapper/TimeWrapper.h"
+#include "PSRamHandler/PSRamHandler.h"
 
 #include "averageFilter.h"
 
@@ -64,10 +65,15 @@ void setup()
   if (HARDWARETEST || btn_a.isPressed() || btn_b.isPressed())
   {
     HardwareTest();
+    Serial.printf("\n\n");
+    Serial.println(F("Test finished."));
+    // Stop after HardwareTest
+    while (true)
+    {
+    }
   }
 
   sdCardHelpers.initSD();
-  sdCardHelpers.printAllFiles();
 
   delay(100);
 
@@ -313,8 +319,7 @@ void HardwareTest()
   // ==================
   Serial.println(F("\nTest 2 - RealTimeClock"));
   Serial.println(F("----------------------"));
-  Serial.print(F("Send current time via serial to set the RTC, "));
-  Serial.print(F("Letter T followed by ten digit time (as seconds since Jan 1 1970),"));
+  Serial.print(F("Set time by sending letter 'T' followed by ten digit time (as seconds since Jan 1 1970), via serial, "));
   Serial.println(F("e.g. T1357041600 for January 1st 2013"));
   timer10sec = 0;
   timer1sec = 0;
@@ -338,61 +343,60 @@ void HardwareTest()
 
   // Additional Memory
   // =========================
-  Serial.println(F("\nAdditional Memory"));
-  Serial.println(F("-----------------"));
-  timer10sec = 0;
-  timer1sec = 0;
-  while (timer10sec <= timeout - 1)
+  Serial.println(F("\nTest 3 - PSRAM"));
+  Serial.println(F("--------------"));
+  Serial.println(F("(additional 8 pin QSPI 8MB memory chip soldered on the backside of the Teensy.)"));
+  if (PSRamHandler::runTest())
   {
-    if (timer1sec >= 1000)
-    {
-      timer1sec = timer1sec - 1000;
-      Serial.print(String(10 - timer10sec / 1000) + "... ");
-      // TODO Memory Test
-    }
+    Serial.printf(F("Test passed\n"));
+  }
+  else
+  {
+    Serial.printf(F("Test failed\n"));
   }
 
   // Test SD-Card
   // =============
   Serial.println(F("\nTest 2 - SD-Card"));
   Serial.println(F("----------------"));
-  sdCardHelpers.initSD();
-  timer10sec = 0;
-  timer1sec = 0;
-  String filename, message;
-  Serial.println("Files on SD-Card:");
-  sdCardHelpers.printAllFiles();
-  Serial.println();
-  while (timer10sec <= timeout - 1)
+  if (sdCardHelpers.initSD())
   {
-    if (timer1sec >= 1000)
+    timer10sec = 0;
+    timer1sec = 0;
+    String filename, message;
+    Serial.println(F("Files on SD-Card:"));
+    sdCardHelpers.printAllFiles();
+    Serial.println();
+    while (timer10sec <= timeout - 1)
     {
-      if (TimeWrapper::checkStatus())
+      if (timer1sec >= 1000)
       {
-        Serial.println(TimeWrapper::dateFormattedAsFilePrefix());
-        filename = TimeWrapper::dateFormattedAsFilePrefix() + ".TXT";
-        message = TimeWrapper::currentTimeAsString() + " This is a hardware test.";
+        Serial.print(String(10 - timer10sec / 1000) + "... ");
+        if (TimeWrapper::checkStatus())
+        {
+          filename = TimeWrapper::dateFormattedAsFilePrefix() + ".TXT";
+          message = TimeWrapper::currentTimeAsString() + " This is a hardware test.";
+        }
+        else
+        {
+          filename = "TEST.TXT";
+          message = String(timer10sec) + " This is a hardware test. RTC not set.";
+        }
+        if (SDCardHelpers::writeTextFile(filename, message))
+        {
+          Serial.printf("Wrote to file '%s': %s\n", filename.c_str(), message.c_str());
+        }
+        else
+        {
+          Serial.printf("Failed writing file '%s' to SD-Card\n", filename.c_str());
+        }
+        timer1sec = timer1sec - 1000;
       }
-      else
-      {
-        filename = "TEST.TXT";
-        message = String(timer10sec) + " This is a hardware test. RTC not set.";
-      }
-      if (SDCardHelpers::writeTextFile(filename, message))
-      {
-        Serial.printf("Wrote to file '%s': %s\n", filename.c_str(), message.c_str());
-      }
-      else
-      {
-        Serial.printf("Failed writing file '%s' to SD-Card\n", filename.c_str());
-      }
-      timer1sec = timer1sec - 1000;
-      Serial.print(String(10 - timer10sec / 1000) + "... ");
     }
+    Serial.println(F("Files on SD-Card:"));
+    sdCardHelpers.printAllFiles();
+    Serial.println();
   }
-  Serial.println("Files on SD-Card:");
-  sdCardHelpers.printAllFiles();
-  Serial.println();
 
   // Test Network
   // =============
@@ -444,17 +448,37 @@ void HardwareTest()
   Serial.println(F("\nTest 4 - Dynamixels"));
   Serial.println(F("-------------------"));
   Serial.println(F("All Dynamixels should move a bit."));
+
+  dynamixel.init_dxl();
+
+  int32_t goal_position[] = {2048, 2048 - 256, 2048, 2048 + 256};
+  int goal_position_index = 0;
+  long targetPositionsServos[16];
   timer10sec = 0;
   timer1sec = 0;
+  Serial.print(F("Number of Servos addressed: "));
+  Serial.println(sizeof(targetPositionsServos) / sizeof(long));
   while (timer10sec <= timeout - 1)
   {
     if (timer1sec >= 1000)
     {
       timer1sec = timer1sec - 1000;
       Serial.print(String(10 - timer10sec / 1000) + "... ");
+      for (u_int i = 0; i < sizeof(targetPositionsServos) / sizeof(long); i++)
+      {
+        targetPositionsServos[i] = goal_position[goal_position_index % 4];
+      }
+      Serial.print(F("Moving servos to:\n"));
+      for (int i = 0; i < 16; i++)
+      {
+        Serial.printf("ID: %d, Position: %lu\n", i, targetPositionsServos[i]);
+      }
+      Serial.println();
+      dynamixel.setNewDynamixelPositions(targetPositionsServos);
+      goal_position_index++;
     }
-    // ToDo: Dynamixel Movement
   }
+  // ToDo: Read present positions, read temperature
   Serial.println();
 
   // Test Stepper Motors
@@ -491,10 +515,11 @@ void HardwareTest()
     }
     // ToDo: Stepper Movement and End-Switch Test
   }
+  Serial.println();
 
-  // Temperature, CPU-Voltage(?)
-  // =========================
-  Serial.println(F("\nTest 7 - CPU Data"));
+  // Temperature
+  // ===========
+  Serial.println(F("\nTest 7 - Temperature"));
   Serial.println(F("-----------------------------"));
   timer10sec = 0;
   timer1sec = 0;
@@ -507,18 +532,14 @@ void HardwareTest()
       timer1sec = timer1sec - 1000;
       Serial.print(String(10 - timer10sec / 1000) + "... ");
       Serial.print("CPU Temperature: ");
-      Serial.print(tempmonGetTemp());
-      SErial.println("°C")
+      Serial.println(tempmonGetTemp());
+      Serial.printf("%cC\n", 167); // 167 = ASCII for °
+      Serial.printf("%cC\n", 176); // 167 = ASCII for °
+      Serial.println(char(176));
+      Serial.println(char(167));
+      Serial.println("°");
     }
   }
   tempmon_Stop();
   tempmon_PwrDwn();
-
-  // Test Ended, stay in loop
-  // ========================
-  Serial.printf("\n\n");
-  Serial.println(F("Test finished."));
-  while (true)
-  {
-  }
 }

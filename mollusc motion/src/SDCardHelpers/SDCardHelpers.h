@@ -10,7 +10,7 @@ private:
     const int chipSelect = BUILTIN_SDCARD;
 
 public:
-    void initSD();
+    bool initSD();
     void printDirectory(File dir, int numTabs);
     void printAllFiles();
     static bool writeTextFile(String filename, String message);

@@ -19,6 +19,7 @@ void Dynamixel::setNewDynamixelPositions(long *targetPositions)
     {
         sw_data[i].goal_position = targetPositions[i];
     }
+
     // Update the SyncWrite packet status
     sw_infos.is_info_changed = true;
 
@@ -34,64 +35,71 @@ void Dynamixel::setNewDynamixelPositions(long *targetPositions)
 
 void Dynamixel::DynamixelTest()
 {
-    if (current_millis - previous_millis > 2000)
+    // unsigned long current_millis = millis();
+    // unsigned long previous_millis = current_millis;
+
+    // static const uint8_t goal_position_count = 4;
+    // uint8_t goal_position_index = 0;
+    // static constexpr int32_t goal_position[goal_position_count] = {2048, 2048 - 256, 2048, 2048 + 256};
+
+    // if (current_millis - previous_millis > 2000)
+    // {
+    //     // Insert a new Goal Position to the SyncWrite Packet
+    //     for (uint8_t i = 0; i < DXL_ID_CNT; i++)
+    //     {
+    //         sw_data[i].goal_position = goal_position[goal_position_index];
+    //     }
+
+    //     // Update the SyncWrite packet status
+    //     sw_infos.is_info_changed = true;
+
+    //     // Build a SyncWrite Packet and transmit to DYNAMIXEL
+    //     if (dxl->syncWrite(&sw_infos) == true)
+    //     {
+    //         Serial.println("[SyncWrite] Success");
+    //         for (uint8_t i = 0; i < sw_infos.xel_count; i++)
+    //         {
+    //             Serial.print("  ID: ");
+    //             Serial.print(sw_infos.p_xels[i].id);
+    //             Serial.print(",\tGoal Position: ");
+    //             Serial.println(sw_data[i].goal_position);
+    //         }
+    //         goal_position_index++;
+    //         if (goal_position_index == 4)
+    //             goal_position_index = 0;
+    //     }
+    //     else
+    //     {
+    //         Serial.print("[SyncWrite] Fail, Lib error code: ");
+    //         Serial.print(dxl->getLastLibErrCode());
+    //     }
+    //     Serial.println();
+
+    // Transmit predefined SyncRead instruction packet
+    // and receive a status packet from each DYNAMIXEL
+    uint8_t recv_cnt = dxl->syncRead(&sr_infos);
+    if (recv_cnt > 0)
     {
-        // Insert a new Goal Position to the SyncWrite Packet
-        for (uint8_t i = 0; i < DXL_ID_CNT; i++)
+        Serial.print("[SyncRead] Success, Received ID Count: ");
+        Serial.println(recv_cnt);
+        for (uint8_t i = 0; i < recv_cnt; i++)
         {
-            sw_data[i].goal_position = goal_position[goal_position_index];
+            Serial.print("  ID: ");
+            Serial.print(sr_infos.p_xels[i].id);
+            Serial.print(",\tError: ");
+            Serial.print(sr_infos.p_xels[i].error);
+            Serial.print(",\tPresent Position: ");
+            Serial.println(sr_data[i].present_position);
         }
-
-        // Update the SyncWrite packet status
-        sw_infos.is_info_changed = true;
-
-        // Build a SyncWrite Packet and transmit to DYNAMIXEL
-        if (dxl->syncWrite(&sw_infos) == true)
-        {
-            Serial.println("[SyncWrite] Success");
-            for (uint8_t i = 0; i < sw_infos.xel_count; i++)
-            {
-                Serial.print("  ID: ");
-                Serial.print(sw_infos.p_xels[i].id);
-                Serial.print(",\tGoal Position: ");
-                Serial.println(sw_data[i].goal_position);
-            }
-            goal_position_index++;
-            if (goal_position_index == 4)
-                goal_position_index = 0;
-        }
-        else
-        {
-            Serial.print("[SyncWrite] Fail, Lib error code: ");
-            Serial.print(dxl->getLastLibErrCode());
-        }
-        Serial.println();
-
-        // Transmit predefined SyncRead instruction packet
-        // and receive a status packet from each DYNAMIXEL
-        uint8_t recv_cnt = dxl->syncRead(&sr_infos);
-        if (recv_cnt > 0)
-        {
-            Serial.print("[SyncRead] Success, Received ID Count: ");
-            Serial.println(recv_cnt);
-            for (uint8_t i = 0; i < recv_cnt; i++)
-            {
-                Serial.print("  ID: ");
-                Serial.print(sr_infos.p_xels[i].id);
-                Serial.print(",\tError: ");
-                Serial.print(sr_infos.p_xels[i].error);
-                Serial.print(",\tPresent Position: ");
-                Serial.println(sr_data[i].present_position);
-            }
-        }
-        else
-        {
-            Serial.print("[SyncRead] Fail, Lib error code: ");
-            Serial.println(dxl->getLastLibErrCode());
-        }
-        Serial.println("=======================================================");
-        previous_millis = current_millis;
     }
+    else
+    {
+        Serial.print("[SyncRead] Fail, Lib error code: ");
+        Serial.println(dxl->getLastLibErrCode());
+    }
+    Serial.println("=======================================================");
+    // previous_millis = current_millis;
+    // }
 }
 
 void Dynamixel::enableTorque()
