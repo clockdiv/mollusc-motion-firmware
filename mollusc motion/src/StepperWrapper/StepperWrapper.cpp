@@ -32,6 +32,7 @@ StepperWrapper::StepperWrapper()
     end_3.interval(25);
     end_3.setPressedState(LOW);
 
+    pinMode(STEPPER_ENABLE, OUTPUT);
     digitalWriteFast(STEPPER_ENABLE, LOW); // enable all steppers
 }
 

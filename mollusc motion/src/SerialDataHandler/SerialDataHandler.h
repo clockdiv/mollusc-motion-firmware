@@ -6,7 +6,8 @@
 enum SerialCommand
 {
     STATE_CHANGE,
-    POSITION_DATA
+    POSITION_DATA,
+    SET_TIME
 };
 
 class SerialDataHandler
@@ -18,6 +19,7 @@ private:
         char stateAsString[16];
         long targetPositionsSteppers[4];
         long targetPositionsServos[16];
+        unsigned long pctime;
     };
     // struct IDPosPair
     // {

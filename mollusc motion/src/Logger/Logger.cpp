@@ -51,14 +51,7 @@ void Logger::Log_to_Serial(String message)
 
 bool Logger::Log_to_SD(String message)
 {
-    File dataFile = SD.open("datalog.txt", FILE_WRITE);
-
-    if (!dataFile)
-        return false;
-
-    dataFile.println(message);
-    dataFile.close();
-    return true;
+    return SDCardHelpers::writeTextFile("log.txt", message);
 }
 
 bool Logger::Log_to_Server(String message)

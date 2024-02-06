@@ -47,3 +47,15 @@ void SDCardHelpers::printAllFiles()
     File root = SD.open("/");
     printDirectory(root, 0);
 }
+
+bool SDCardHelpers::writeTextFile(String filename, String message)
+{
+    File dataFile = SD.open(filename.c_str(), FILE_WRITE);
+
+    if (!dataFile)
+        return false;
+
+    dataFile.println(message);
+    dataFile.close();
+    return true;
+}

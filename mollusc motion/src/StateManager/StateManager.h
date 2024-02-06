@@ -1,7 +1,7 @@
 #ifndef STATEMANAGER_H
 #define STATEMANAGER_H
 
-#include "steppers.h"
+#include <Arduino.h>
 
 enum States
 {

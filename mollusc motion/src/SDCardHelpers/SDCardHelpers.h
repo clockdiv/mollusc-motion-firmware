@@ -13,6 +13,7 @@ public:
     void initSD();
     void printDirectory(File dir, int numTabs);
     void printAllFiles();
+    static bool writeTextFile(String filename, String message);
 };
 
 #endif

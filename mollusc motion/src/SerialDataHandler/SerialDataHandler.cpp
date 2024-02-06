@@ -43,6 +43,19 @@ bool SerialDataHandler::receiveAsCSV()
             serialData.command = STATE_CHANGE;
             strcpy(serialData.stateAsString, "RUNNING");
         }
+        else if (incomingString.charAt(0) == 'T')
+        {
+            serialData.command = SET_TIME;
+            // Serial.println("XXXXXXXXXX RECEIVED CHAR");
+            // Serial.println(incomingString);
+            incomingString = incomingString.substring(1);
+            // Serial.println(incomingString);
+            // char pctime[16];
+            // strcpy(pctime, incomingString.c_str());
+            serialData.pctime = incomingString.toInt();
+            // Serial.println(serialData.pctime);
+            // Serial.println("XXXXXXXXXX RECEIVED CHAR END");
+        }
         else
         {
             serialData.command = SerialCommand::POSITION_DATA;
