@@ -2,6 +2,7 @@
 
 TimeWrapper::TimeWrapper()
 {
+    setTime(Teensy3Clock.get());
 }
 
 String TimeWrapper::formatNumber(int number)

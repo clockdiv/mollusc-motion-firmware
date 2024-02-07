@@ -17,10 +17,10 @@
 
 #include "averageFilter.h"
 
-#define BTN_A 17 // PCB v1.1
-#define BTN_B 14 // PCB v1.1
-// #define BTN_A 16 // PCB v1.2
-// #define BTN_B 17 // PCB v1.2
+// #define BTN_A 17 // PCB v1.1
+// #define BTN_B 14 // PCB v1.1
+#define BTN_A 16 // PCB v1.2
+#define BTN_B 17 // PCB v1.2
 #define DYNAMIXEL_COMM_DIR 22
 
 #define HARDWARETEST true
@@ -532,14 +532,12 @@ void HardwareTest()
       timer1sec = timer1sec - 1000;
       Serial.print(String(10 - timer10sec / 1000) + "... ");
       Serial.print("CPU Temperature: ");
-      Serial.println(tempmonGetTemp());
-      Serial.printf("%cC\n", 167); // 167 = ASCII for °
-      Serial.printf("%cC\n", 176); // 167 = ASCII for °
-      Serial.println(char(176));
-      Serial.println(char(167));
-      Serial.println("°");
+      Serial.print(tempmonGetTemp());
+      Serial.printf("Celsius\n");
     }
   }
   tempmon_Stop();
   tempmon_PwrDwn();
+
+  digitalWriteFast(LED_BUILTIN, LOW);
 }
