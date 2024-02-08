@@ -94,7 +94,7 @@ void setup()
   // end_3.attach(STEPPER_3_END, INPUT_PULLUP);
   // end_3.interval(25);
   // end_3.setPressedState(LOW);
-
+  stepperWrapper.setDirPins(false, true, false);
   dynamixel.init_dxl();
   neoPixels.init();
 
@@ -262,6 +262,7 @@ void HardwareTest()
   Serial.println(F("Entered Testmode"));
   Serial.println(F("================"));
   Serial.println();
+
   Serial.println(F("Test 1 - Buttons"));
   Serial.println(F("----------------"));
 
@@ -481,24 +482,6 @@ void HardwareTest()
   // ToDo: Read present positions, read temperature
   Serial.println();
 
-  // Test Stepper Motors
-  // ===================
-  Serial.println(F("\nTest 5 - Stepper Motors"));
-  Serial.println(F("-----------------------"));
-  Serial.println(F("All Steppers should move a bit forward and backwards."));
-  timer10sec = 0;
-  timer1sec = 0;
-  while (timer10sec <= timeout - 1)
-  {
-    if (timer1sec >= 1000)
-    {
-      timer1sec = timer1sec - 1000;
-      Serial.print(String(10 - timer10sec / 1000) + "... ");
-    }
-    // ToDo: Stepper Movement
-  }
-  Serial.println();
-
   // Test Stepper End Switches
   // =========================
   Serial.println(F("\nTest 6 - Stepper End Switches"));
@@ -514,6 +497,30 @@ void HardwareTest()
       Serial.print(String(10 - timer10sec / 1000) + "... ");
     }
     // ToDo: Stepper Movement and End-Switch Test
+  }
+  Serial.println();
+
+  // Test Stepper Motors
+  // ===================
+  Serial.println(F("\nTest 5 - Stepper Motors"));
+  Serial.println(F("-----------------------"));
+  Serial.println(F("All Steppers should move with acceleration a bit forward and backwards."));
+  timer10sec = 0;
+  timer1sec = 0;
+  stepperWrapper.setDirPins(false, false, false);
+
+  long targetPositionsSteppers[] = {50000, 50000, 50000};
+  stepperWrapper.initManual();
+  stepperWrapper.setNewStepperPositions(targetPositionsSteppers);
+
+  while (timer10sec <= timeout - 1)
+  {
+    if (timer1sec >= 1000)
+    {
+      timer1sec = timer1sec - 1000;
+      Serial.print(String(10 - timer10sec / 1000) + "... ");
+    }
+    stepperWrapper.runAll();
   }
   Serial.println();
 
@@ -533,7 +540,7 @@ void HardwareTest()
       Serial.print(String(10 - timer10sec / 1000) + "... ");
       Serial.print("CPU Temperature: ");
       Serial.print(tempmonGetTemp());
-      Serial.printf("Celsius\n");
+      Serial.printf(" Celsius\n");
     }
   }
   tempmon_Stop();

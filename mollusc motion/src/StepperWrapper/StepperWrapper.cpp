@@ -8,13 +8,13 @@ StepperWrapper::StepperWrapper()
     stepper_3 = AccelStepper(AccelStepper::DRIVER, STEPPER_3_PULSE, STEPPER_3_DIR);
 
     stepper_1.setMinPulseWidth(minPulseWidth);
-    stepper_1.setPinsInverted(false, false, false); // direction, step, enabled
+    // stepper_1.setPinsInverted(false, false, false); // direction, step, enabled
 
     stepper_2.setMinPulseWidth(minPulseWidth);
-    stepper_2.setPinsInverted(true, false, false); // direction, step, enabled
+    // stepper_2.setPinsInverted(true, false, false); // direction, step, enabled
 
     stepper_3.setMinPulseWidth(minPulseWidth);
-    stepper_3.setPinsInverted(false, false, false); // direction, step, enabled
+    // stepper_3.setPinsInverted(false, false, false); // direction, step, enabled
 
     end_1 = Bounce2::Button();
     end_2 = Bounce2::Button();
@@ -34,6 +34,13 @@ StepperWrapper::StepperWrapper()
 
     pinMode(STEPPER_ENABLE, OUTPUT);
     digitalWriteFast(STEPPER_ENABLE, LOW); // enable all steppers
+}
+
+void StepperWrapper::setDirPins(bool dir_step_0, bool dir_step_1, bool dir_step_2)
+{
+    stepper_1.setPinsInverted(dir_step_0, false, false); // direction, step, enabled
+    stepper_2.setPinsInverted(dir_step_1, false, false); // direction, step, enabled
+    stepper_3.setPinsInverted(dir_step_2, false, false); // direction, step, enabled
 }
 
 void StepperWrapper::zeroPositions()
@@ -73,20 +80,14 @@ void StepperWrapper::initRunning()
 {
     Serial.println("initRunning()");
 
-    // const float acceleration = 10000;
-
     stepper_1.setMaxSpeed(stepper_1_maxSpeed);
     stepper_2.setMaxSpeed(stepper_2_maxSpeed);
     stepper_3.setMaxSpeed(stepper_3_maxSpeed);
-
-    // stepper_1.setAcceleration(acceleration);
-    // stepper_2.setAcceleration(acceleration);
-    // stepper_3.setAcceleration(acceleration);
 }
 
 void StepperWrapper::initManual()
 {
-    // this is called when the user 'jumps' on the
+    // this is called when the user 'jumps' within the
     // timeline in Blender. The motors are moved with
     // acceleration to their target positions.
     Serial.println("initManual()");
@@ -113,10 +114,6 @@ void StepperWrapper::initHoming_A()
     stepper_1.setMaxSpeed(2000);
     stepper_2.setMaxSpeed(2000);
     stepper_3.setMaxSpeed(2000);
-
-    // stepper_1.setAcceleration(acceleration);
-    // stepper_2.setAcceleration(acceleration);
-    // stepper_3.setAcceleration(acceleration);
 
     stepper_1.setSpeed(-1600);
     stepper_2.setSpeed(-1600);

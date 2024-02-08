@@ -20,7 +20,8 @@
 
 class StepperWrapper
 {
-private:
+    // private:
+public:
     AccelStepper stepper_1;
     AccelStepper stepper_2;
     AccelStepper stepper_3;
@@ -52,6 +53,7 @@ private:
 
 public:
     StepperWrapper();
+    void setDirPins(bool dir_step_0, bool dir_step_1, bool dir_step_2);
     void zeroPositions();
     void setNewStepperPositions(long *targetPositions);
     void initIdle();
