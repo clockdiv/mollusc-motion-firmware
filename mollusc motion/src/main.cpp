@@ -14,6 +14,7 @@
 #include "StateManager/StateManager.h"
 #include "TimeWrapper/TimeWrapper.h"
 #include "PSRamHandler/PSRamHandler.h"
+#include "NetworkHandler/NetworkHandler.h"
 
 #include "averageFilter.h"
 
@@ -23,7 +24,7 @@
 #define BTN_B 17 // PCB v1.2
 #define DYNAMIXEL_COMM_DIR 22
 
-#define HARDWARETEST true
+#define HARDWARETEST false
 
 Bounce2::Button btn_a;
 Bounce2::Button btn_b;
@@ -37,6 +38,7 @@ StepperWrapper stepperWrapper;
 SerialDataHandler serialDataHandler;
 StateManager stateManager;
 TimeWrapper timeWrapper;
+NetworkHandler networkHandler;
 
 unsigned long current_millis, previous_millis;
 
@@ -62,6 +64,9 @@ void setup()
 
   delay(100);
 
+  btn_a.update();
+  btn_b.update();
+
   if (HARDWARETEST || btn_a.isPressed() || btn_b.isPressed())
   {
     HardwareTest();
@@ -83,17 +88,17 @@ void setup()
 
   // analogReadResolution(13);
 
-  // end_1.attach(STEPPER_1_END, INPUT_PULLUP);
-  // end_1.interval(25);
-  // end_1.setPressedState(LOW);
+  // limit_switch_0.attach(STEPPER_1_END, INPUT_PULLUP);
+  // limit_switch_0.interval(25);
+  // limit_switch_0.setPressedState(LOW);
 
-  // end_2.attach(STEPPER_2_END, INPUT_PULLUP);
-  // end_2.interval(25);
-  // end_2.setPressedState(LOW);
+  // limit_switch_1.attach(STEPPER_2_END, INPUT_PULLUP);
+  // limit_switch_1.interval(25);
+  // limit_switch_1.setPressedState(LOW);
 
-  // end_3.attach(STEPPER_3_END, INPUT_PULLUP);
-  // end_3.interval(25);
-  // end_3.setPressedState(LOW);
+  // limit_switch_2.attach(STEPPER_3_END, INPUT_PULLUP);
+  // limit_switch_2.interval(25);
+  // limit_switch_2.setPressedState(LOW);
   stepperWrapper.setDirPins(false, true, false);
   dynamixel.init_dxl();
   neoPixels.init();
@@ -137,14 +142,14 @@ void loop()
       //     if (state == RUNNING)
       //     {
       //         // TODO enable again!
-      //         float speed_stepper_1 = stepper_1_speed_filtered.filter(fps * float(stepper_1.distanceToGo()) * 0.1f);
-      //         stepper_1.setSpeed(speed_stepper_1);
+      //         float speed_stepper_1 = stepper_0_speed_filtered.filter(fps * float(stepper_0.distanceToGo()) * 0.1f);
+      //         stepper_0.setSpeed(speed_stepper_1);
       //         // TODO enable again!
-      //         float speed_stepper_2 = stepper_2_speed_filtered.filter(fps * float(stepper_2.distanceToGo()) * 0.1f);
-      //         stepper_2.setSpeed(speed_stepper_2);
+      //         float speed_stepper_2 = stepper_1_speed_filtered.filter(fps * float(stepper_1.distanceToGo()) * 0.1f);
+      //         stepper_1.setSpeed(speed_stepper_2);
       //         // TODO enable again!
-      //         float speed_stepper_3 = stepper_3_speed_filtered.filter(fps * float(stepper_3.distanceToGo()) * 0.1f);
-      //         stepper_3.setSpeed(speed_stepper_3);
+      //         float speed_stepper_3 = stepper_2_speed_filtered.filter(fps * float(stepper_2.distanceToGo()) * 0.1f);
+      //         stepper_2.setSpeed(speed_stepper_3);
       //     }
       break;
     default:
@@ -160,11 +165,11 @@ void loop()
     // Serial.print(" - ");
     // Serial.print(btn_b.isPressed());
     // Serial.print(" - ");
-    // Serial.print(end_1.isPressed());
+    // Serial.print(limit_switch_0.isPressed());
     // Serial.print(" - ");
-    // Serial.print(end_2.isPressed());
+    // Serial.print(limit_switch_1.isPressed());
     // Serial.print(" - ");
-    // Serial.println(end_3.isPressed());
+    // Serial.println(limit_switch_2.isPressed());
     previous_millis = current_millis;
   }
   if (btn_a.fell())
@@ -210,9 +215,9 @@ void loop()
                              needs to be called often just like runSpeed() or run().
                              Will step the motor if a step is required at the currently selected speed
                              unless the target position has been reached. Does not implement accelerations. */
+    // stepper_0.runSpeedToPosition();
     // stepper_1.runSpeedToPosition();
     // stepper_2.runSpeedToPosition();
-    // stepper_3.runSpeedToPosition();
     stepperWrapper.runAllSpeedToPositions();
     break;
   case States::MANUAL:
@@ -221,9 +226,9 @@ void loop()
        You must call this as frequently as possible, but at least once per minimum step time interval, preferably in your main loop.
        Note that each call to run() will make at most one step, and then only when a step is due, based on the current speed and the time since the last step. */
 
+    // stepper_0.run();
     // stepper_1.run();
     // stepper_2.run();
-    // stepper_3.run();
     stepperWrapper.runAll();
     break;
   case States::HOMING_A:
@@ -245,7 +250,7 @@ void loop()
 
   // Enable LED_BUILTIN when a stepper is in running
   // TODO Enable again:
-  // digitalWriteFast(LED_BUILTIN, stepper_1.isRunning() || stepper_2.isRunning() || stepper_3.isRunning());
+  // digitalWriteFast(LED_BUILTIN, stepper_0.isRunning() || stepper_1.isRunning() || stepper_2.isRunning());
 
   // handle_current_state();
 }
@@ -253,22 +258,29 @@ void loop()
 void HardwareTest()
 {
   const unsigned long timeout = 10000;
-  while (!Serial)
-    ;
+  elapsedMillis timer1sec, timer10sec, led_toggle;
 
-  elapsedMillis timer1sec, timer10sec;
+  bool LED_BUILTIN_STATE = LOW;
+  led_toggle = 0;
+  while (!Serial)
+  {
+    if (led_toggle > 250)
+    {
+      LED_BUILTIN_STATE = !LED_BUILTIN_STATE;
+      digitalWriteFast(LED_BUILTIN, LED_BUILTIN_STATE);
+      led_toggle = 0;
+    }
+  }
 
   digitalWriteFast(LED_BUILTIN, HIGH);
   Serial.println(F("Entered Testmode"));
   Serial.println(F("================"));
   Serial.println();
 
-  Serial.println(F("Test 1 - Buttons"));
-  Serial.println(F("----------------"));
-
   // Test Button A
   // =============
-  Serial.println(F("Press button A"));
+  Serial.println(F("\nTest 1/11 - Button A"));
+  Serial.println(F("--------------------"));
   timer10sec = 0;
   timer1sec = 0;
   while (true)
@@ -277,7 +289,7 @@ void HardwareTest()
     if (timer1sec >= 1000)
     {
       timer1sec = timer1sec - 1000;
-      Serial.print(String(10 - timer10sec / 1000) + "... ");
+      Serial.print(String((timeout - timer10sec) / 1000) + "... ");
     }
     if (btn_a.fell())
     {
@@ -293,7 +305,8 @@ void HardwareTest()
 
   // Test Button B
   // =============
-  Serial.println(F("Press button B"));
+  Serial.println(F("\nTest 2/11 - Button B"));
+  Serial.println(F("--------------------"));
   timer10sec = 0;
   timer1sec = 0;
   while (true)
@@ -302,7 +315,7 @@ void HardwareTest()
     if (timer1sec >= 1000)
     {
       timer1sec = timer1sec - 1000;
-      Serial.print(String(10 - timer10sec / 1000) + "... ");
+      Serial.print(String((timeout - timer10sec) / 1000) + "... ");
     }
     if (btn_b.fell())
     {
@@ -318,8 +331,8 @@ void HardwareTest()
 
   // Test RealTimeClock
   // ==================
-  Serial.println(F("\nTest 2 - RealTimeClock"));
-  Serial.println(F("----------------------"));
+  Serial.println(F("\nTest 3/11 - RealTimeClock"));
+  Serial.println(F("-------------------------"));
   Serial.print(F("Set time by sending letter 'T' followed by ten digit time (as seconds since Jan 1 1970), via serial, "));
   Serial.println(F("e.g. T1357041600 for January 1st 2013"));
   timer10sec = 0;
@@ -330,7 +343,7 @@ void HardwareTest()
     if (timer1sec >= 1000)
     {
       timer1sec = timer1sec - 1000;
-      Serial.print(String(10 - timer10sec / 1000) + "... ");
+      Serial.print(String((timeout - timer10sec) / 1000) + "... ");
       Serial.println(timeWrapper.currentTimeAsString());
     }
     if (serialDataHandler.receiveAsCSV())
@@ -344,8 +357,8 @@ void HardwareTest()
 
   // Additional Memory
   // =========================
-  Serial.println(F("\nTest 3 - PSRAM"));
-  Serial.println(F("--------------"));
+  Serial.println(F("\nTest 4/11 - PSRAM"));
+  Serial.println(F("-----------------"));
   Serial.println(F("(additional 8 pin QSPI 8MB memory chip soldered on the backside of the Teensy.)"));
   if (PSRamHandler::runTest())
   {
@@ -358,8 +371,8 @@ void HardwareTest()
 
   // Test SD-Card
   // =============
-  Serial.println(F("\nTest 2 - SD-Card"));
-  Serial.println(F("----------------"));
+  Serial.println(F("\nTest 5/11 - SD-Card"));
+  Serial.println(F("-------------------"));
   if (sdCardHelpers.initSD())
   {
     timer10sec = 0;
@@ -372,7 +385,7 @@ void HardwareTest()
     {
       if (timer1sec >= 1000)
       {
-        Serial.print(String(10 - timer10sec / 1000) + "... ");
+        Serial.print(String((timeout - timer10sec) / 1000) + "... ");
         if (TimeWrapper::checkStatus())
         {
           filename = TimeWrapper::dateFormattedAsFilePrefix() + ".TXT";
@@ -401,30 +414,55 @@ void HardwareTest()
 
   // Test Network
   // =============
-  Serial.println(F("\nTest 3 - Network connection"));
-  Serial.println(F("---------------------------"));
+  Serial.println(F("\nTest 6/11 - Network connection"));
+  Serial.println(F("------------------------------"));
   timer10sec = 0;
   timer1sec = 0;
-
-  while (timer10sec <= timeout - 1)
+  bool network_ok = false;
+  if (networkHandler.HardwareStatus())
   {
-    if (timer1sec >= 1000)
+    Serial.println(F("Hardware found"));
+    if (networkHandler.CableConnected())
     {
-      timer1sec = timer1sec - 1000;
-      Serial.print(String(10 - timer10sec / 1000) + "... ");
+      network_ok = true;
+      Serial.println(F("Cable connected"));
+      Serial.print(F("Local IP Address: "));
+      Serial.println(networkHandler.GetIp());
     }
-    // ToDo: Network Test
-    // Show IP
-    // try connect to 8.8.8.8
-    // wait 10 sec for OSC messages...
-    // ...and broadcast a OSC message every 1 seconds
+    else
+    {
+      Serial.println(F("No ethernet cable connected"));
+    }
+  }
+  else
+  {
+    Serial.println(F("No Ethernet Hardware found"));
+  }
+
+  if (network_ok)
+  {
+    int counter = 0;
+    while (timer10sec <= timeout - 1)
+    {
+      networkHandler.updateIncomingOSC();
+
+      if (timer1sec >= 1000)
+      {
+        timer1sec = timer1sec - 1000;
+        Serial.print(String((timeout - timer10sec) / 1000) + "... ");
+
+        String osc_message = "Hello from mollusc motion #" + String(counter);
+        networkHandler.sendOSCString(osc_message);
+        counter++;
+      }
+    }
   }
   Serial.println();
 
   // Test NeoPixels
   // ==============
-  Serial.println(F("\nTest 2 - NeoPixels"));
-  Serial.println(F("------------------"));
+  Serial.println(F("\nTest 7/11 - NeoPixels"));
+  Serial.println(F("---------------------"));
   Serial.println(F("All NeoPixels should fade WHITE for 10 seconds."));
   neoPixels.init();
   timer10sec = 0;
@@ -435,7 +473,7 @@ void HardwareTest()
     if (timer1sec >= 1000)
     {
       timer1sec = timer1sec - 1000;
-      Serial.print(String(10 - timer10sec / 1000) + "... ");
+      Serial.print(String((timeout - timer10sec) / 1000) + "... ");
     }
 
     float neopixel_brightness = (sin(millis() / 500.0) + 1.0) / 2.0 * 55.0;
@@ -446,26 +484,32 @@ void HardwareTest()
 
   // Test Dynamixel
   // ==============
-  Serial.println(F("\nTest 4 - Dynamixels"));
-  Serial.println(F("-------------------"));
+  Serial.println(F("\nTest 8/11 - Dynamixels"));
+  Serial.println(F("----------------------"));
   Serial.println(F("All Dynamixels should move a bit."));
 
   dynamixel.init_dxl();
 
-  int32_t goal_position[] = {2048, 2048 - 256, 2048, 2048 + 256};
+  const int32_t center = 2048;
+  const int32_t offset = 256;
+  const int32_t goal_position[] = {center,
+                                   center - offset,
+                                   center,
+                                   center + offset};
   int goal_position_index = 0;
   long targetPositionsServos[16];
+  u_int targetPositionsCount = sizeof(targetPositionsServos) / sizeof(long);
   timer10sec = 0;
   timer1sec = 0;
   Serial.print(F("Number of Servos addressed: "));
-  Serial.println(sizeof(targetPositionsServos) / sizeof(long));
+  Serial.println(targetPositionsCount);
   while (timer10sec <= timeout - 1)
   {
     if (timer1sec >= 1000)
     {
       timer1sec = timer1sec - 1000;
-      Serial.print(String(10 - timer10sec / 1000) + "... ");
-      for (u_int i = 0; i < sizeof(targetPositionsServos) / sizeof(long); i++)
+      Serial.print(String((timeout - timer10sec) / 1000) + "... ");
+      for (u_int i = 0; i < targetPositionsCount; i++)
       {
         targetPositionsServos[i] = goal_position[goal_position_index % 4];
       }
@@ -479,37 +523,69 @@ void HardwareTest()
       goal_position_index++;
     }
   }
-  // ToDo: Read present positions, read temperature
   Serial.println();
 
-  // Test Stepper End Switches
+  // Test Stepper End Switch 0
   // =========================
-  Serial.println(F("\nTest 6 - Stepper End Switches"));
-  Serial.println(F("-----------------------------"));
-  Serial.println(F("All Steppers move slowly till the end switches are reached."));
+  Serial.println(F("\nTest 9/11 - Stepper End Switches"));
+  Serial.println(F("--------------------------------"));
+  Serial.println(F("Please activate all three endswitches manually."));
   timer10sec = 0;
   timer1sec = 0;
   while (timer10sec <= timeout - 1)
   {
+    stepperWrapper.updateEndSwitches();
     if (timer1sec >= 1000)
     {
       timer1sec = timer1sec - 1000;
-      Serial.print(String(10 - timer10sec / 1000) + "... ");
+      Serial.print(String((timeout - timer10sec) / 1000) + "... ");
     }
-    // ToDo: Stepper Movement and End-Switch Test
+
+    if (stepperWrapper.limit_switch_0.fell())
+    {
+      Serial.println(F("\nLimit switch 0 pressed"));
+      timer10sec = 0;
+    }
+    else if (stepperWrapper.limit_switch_0.rose())
+    {
+      Serial.println(F("\nLimit switch 0 released"));
+      timer10sec = 0;
+    }
+
+    if (stepperWrapper.limit_switch_1.fell())
+    {
+      Serial.println(F("\nLimit switch 1 pressed"));
+      timer10sec = 0;
+    }
+    else if (stepperWrapper.limit_switch_1.rose())
+    {
+      Serial.println(F("\nLimit switch 1 released"));
+      timer10sec = 0;
+    }
+
+    if (stepperWrapper.limit_switch_2.fell())
+    {
+      Serial.println(F("\nLimit switch 2 pressed"));
+      timer10sec = 0;
+    }
+    else if (stepperWrapper.limit_switch_2.rose())
+    {
+      Serial.println(F("\nLimit switch 2 released"));
+      timer10sec = 0;
+    }
   }
   Serial.println();
 
   // Test Stepper Motors
   // ===================
-  Serial.println(F("\nTest 5 - Stepper Motors"));
-  Serial.println(F("-----------------------"));
-  Serial.println(F("All Steppers should move with acceleration a bit forward and backwards."));
+  Serial.println(F("\nTest 10/11 - Stepper Motors"));
+  Serial.println(F("--------------------------"));
+  Serial.println(F("All Steppers move 15000 steps forward and backwards."));
   timer10sec = 0;
   timer1sec = 0;
   stepperWrapper.setDirPins(false, false, false);
 
-  long targetPositionsSteppers[] = {50000, 50000, 50000};
+  long targetPositionsSteppers[] = {15000, 15000, 15000};
   stepperWrapper.initManual();
   stepperWrapper.setNewStepperPositions(targetPositionsSteppers);
 
@@ -518,7 +594,24 @@ void HardwareTest()
     if (timer1sec >= 1000)
     {
       timer1sec = timer1sec - 1000;
-      Serial.print(String(10 - timer10sec / 1000) + "... ");
+      Serial.print(String((timeout - timer10sec) / 1000) + "... ");
+    }
+    stepperWrapper.runAll();
+  }
+
+  targetPositionsSteppers[0] = 0;
+  targetPositionsSteppers[1] = 0;
+  targetPositionsSteppers[2] = 0;
+  stepperWrapper.setNewStepperPositions(targetPositionsSteppers);
+  timer10sec = 0;
+  timer1sec = 0;
+
+  while (timer10sec <= timeout - 1)
+  {
+    if (timer1sec >= 1000)
+    {
+      timer1sec = timer1sec - 1000;
+      Serial.print(String((timeout - timer10sec) / 1000) + "... ");
     }
     stepperWrapper.runAll();
   }
@@ -526,8 +619,8 @@ void HardwareTest()
 
   // Temperature
   // ===========
-  Serial.println(F("\nTest 7 - Temperature"));
-  Serial.println(F("-----------------------------"));
+  Serial.println(F("\nTest 11/11 - CPU Temperature"));
+  Serial.println(F("---------------------------"));
   timer10sec = 0;
   timer1sec = 0;
   tempmon_init();
@@ -537,7 +630,7 @@ void HardwareTest()
     if (timer1sec >= 1000)
     {
       timer1sec = timer1sec - 1000;
-      Serial.print(String(10 - timer10sec / 1000) + "... ");
+      Serial.print(String((timeout - timer10sec) / 1000) + "... ");
       Serial.print("CPU Temperature: ");
       Serial.print(tempmonGetTemp());
       Serial.printf(" Celsius\n");

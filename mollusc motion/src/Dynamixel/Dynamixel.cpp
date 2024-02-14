@@ -14,7 +14,6 @@ Dynamixel::Dynamixel(Dynamixel2Arduino &dxl)
 
 void Dynamixel::setNewDynamixelPositions(long *targetPositions)
 {
-    // unsigned long dynamixelWriteDuration = micros();
     for (uint8_t i = 0; i < DXL_ID_CNT; i++)
     {
         sw_data[i].goal_position = targetPositions[i];
@@ -29,8 +28,6 @@ void Dynamixel::setNewDynamixelPositions(long *targetPositions)
         Serial.print("[SyncWrite] Fail, Lib error code: ");
         Serial.println(dxl->getLastLibErrCode());
     }
-    // dynamixelWriteDuration = micros() - dynamixelWriteDuration;
-    // Serial.println(dynamixelWriteDuration);
 }
 
 void Dynamixel::DynamixelTest()
