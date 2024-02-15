@@ -18,8 +18,6 @@
 
 #include "averageFilter.h"
 
-// #define BTN_A 17 // PCB v1.1
-// #define BTN_B 14 // PCB v1.1
 #define BTN_A 16 // PCB v1.2
 #define BTN_B 17 // PCB v1.2
 #define DYNAMIXEL_COMM_DIR 22
@@ -82,38 +80,11 @@ void setup()
 
   delay(100);
 
-  // log_sd("============================================================");
-  // log_sd("starting board");
-  // log_sd("============================================================");
-
-  // analogReadResolution(13);
-
-  // limit_switch_0.attach(STEPPER_1_END, INPUT_PULLUP);
-  // limit_switch_0.interval(25);
-  // limit_switch_0.setPressedState(LOW);
-
-  // limit_switch_1.attach(STEPPER_2_END, INPUT_PULLUP);
-  // limit_switch_1.interval(25);
-  // limit_switch_1.setPressedState(LOW);
-
-  // limit_switch_2.attach(STEPPER_3_END, INPUT_PULLUP);
-  // limit_switch_2.interval(25);
-  // limit_switch_2.setPressedState(LOW);
   stepperWrapper.setDirPins(false, true, false);
   dynamixel.init_dxl();
   neoPixels.init();
 
-  // for (int i = 0; i < 1024; i++)
-  // {
-  //   poti_a = poti_a_filtered.filter(analogRead(POTI_A));
-  //   poti_b = poti_b_filtered.filter(analogRead(POTI_B));
-  // }
-  // poti_a_old = poti_a;
-  // poti_b_old = poti_b;
-
   stateManager.setState(IDLE);
-
-  // log_sd("setup done, starting mainloop");
 
   previous_millis = millis();
 }
@@ -215,9 +186,6 @@ void loop()
                              needs to be called often just like runSpeed() or run().
                              Will step the motor if a step is required at the currently selected speed
                              unless the target position has been reached. Does not implement accelerations. */
-    // stepper_0.runSpeedToPosition();
-    // stepper_1.runSpeedToPosition();
-    // stepper_2.runSpeedToPosition();
     stepperWrapper.runAllSpeedToPositions();
     break;
   case States::MANUAL:
@@ -225,10 +193,6 @@ void loop()
     /* run(): Poll the motor and step it if a step is due, implementing accelerations and decelerations to achieve the target position.
        You must call this as frequently as possible, but at least once per minimum step time interval, preferably in your main loop.
        Note that each call to run() will make at most one step, and then only when a step is due, based on the current speed and the time since the last step. */
-
-    // stepper_0.run();
-    // stepper_1.run();
-    // stepper_2.run();
     stepperWrapper.runAll();
     break;
   case States::HOMING_A:

@@ -2,21 +2,11 @@
 #define DYNAMIXEL_H
 
 #include <Arduino.h>
-// #include "../Dynamixel2Arduino/Dynamixel2Arduino.h"
 #include <Dynamixel2Arduino.h>
-// #include "pins.h"
-
-// Dynamixel Servos
-// #define DXL_DIR_PIN 22
-// #define DXL_SERIAL Serial5
 
 class Dynamixel
 {
 private:
-    // static const uint8_t DXL_DIR_PIN = 22;
-    // static String DXL_SERIAL = "Serial5";
-    // const Dynamixel2Arduino dxl(Serial5, 22);
-
     static Dynamixel2Arduino *dxl;
 
     static constexpr float DXL_PROTOCOL_VERSION = 2.0;
@@ -52,7 +42,6 @@ private:
     DYNAMIXEL::XELInfoSyncWrite_t info_xels_sw[DXL_ID_CNT];
 
 public:
-    // Dynamixel(HardwareSerial &port, int dir_pin);
     Dynamixel(Dynamixel2Arduino &dxl);
     void setNewDynamixelPositions(long *targetPositions);
     void DynamixelTest();

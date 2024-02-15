@@ -23,18 +23,10 @@
 
 class StepperWrapper
 {
-    // private:
-public:
+private:
     AccelStepper stepper_0;
     AccelStepper stepper_1;
     AccelStepper stepper_2;
-    // AccelStepper stepper_0(AccelStepper::DRIVER, STEPPER_1_PULSE, STEPPER_0_DIR);
-    // AccelStepper stepper_1(AccelStepper::DRIVER, STEPPER_2_PULSE, STEPPER_2_DIR);
-    // AccelStepper stepper_2(AccelStepper::DRIVER, STEPPER_3_PULSE, STEPPER_3_DIR);
-
-    // Bounce2::Button limit_switch_0 = Bounce2::Button();
-    // Bounce2::Button limit_switch_1 = Bounce2::Button();
-    // Bounce2::Button limit_switch_2 = Bounce2::Button();
 
     averageFilter stepper_0_speed_filtered;
     averageFilter stepper_1_speed_filtered;
@@ -48,8 +40,6 @@ public:
     const float stepper_2_maxSpeed = 20000 - maxSpeed_Offset;
 
     unsigned int minPulseWidth = 3;
-
-    // long targetPositions[3];
 
 public:
     Bounce2::Button limit_switch_0;
@@ -70,9 +60,6 @@ public:
     void updateEndSwitches();
     void runAllSpeedToPositions();
     void runAll();
-    // bool getEndSwitch_0();
-    // bool getEndSwitch_1();
-    // bool getEndSwitch_2();
 };
 
 #endif

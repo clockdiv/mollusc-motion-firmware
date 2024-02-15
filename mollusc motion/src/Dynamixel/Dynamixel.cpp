@@ -4,11 +4,8 @@ constexpr uint8_t Dynamixel::DXL_ID_LIST[DXL_ID_CNT] = {0, 1, 2, 3, 4, 5, 6, 7, 
 uint8_t Dynamixel::user_pkt_buf[Dynamixel::user_pkt_buf_cap];
 Dynamixel2Arduino *Dynamixel::dxl;
 
-// Dynamixel::Dynamixel(HardwareSerial &port, int dir_pin)
 Dynamixel::Dynamixel(Dynamixel2Arduino &dxl)
 {
-    // dxl = Dynamixel2Arduino(Serial5, 22);
-    // dxl = Dynamixel2Arduino(port, dir_pin);
     this->dxl = &dxl;
 }
 
