@@ -2,11 +2,13 @@
 #define STATEMANAGER_H
 
 #include <Arduino.h>
+#include "../StepperWrapper/StepperWrapper.h"
 
 enum States
 {
     STARTUP,
     IDLE,
+    PLAYING,
     RUNNING,
     MANUAL,
     HOMING_A, // drive to the end-switches
@@ -17,16 +19,18 @@ class StateManager
 {
 private:
     static const String states[];
+    static States current_state;
+    static States state_old;
 
-    States current_state;
-    States state_old;
+    static StepperWrapper *stepperWrapper;
 
 public:
-    StateManager();
-    String getStateAsString();
-    States getState();
-    void handleStateChange();
-    void setState(States new_state);
+    static void setStepperWrapper(StepperWrapper *extStepperWrapper);
+
+    static String getStateAsString();
+    static States getState();
+    static void handleStateChange();
+    static void setState(States new_state);
     // void handle_current_state();
 };
 

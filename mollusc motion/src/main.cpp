@@ -18,221 +18,118 @@
 
 #include "averageFilter.h"
 
+#define HARDWARETEST false
+const char filename[] = "musk0304.bin";
+
 #define BTN_A 16 // PCB v1.2
 #define BTN_B 17 // PCB v1.2
 #define DYNAMIXEL_COMM_DIR 22
-
-#define HARDWARETEST false
 
 Bounce2::Button btn_a;
 Bounce2::Button btn_b;
 
 Logger logger;
-SDCardHelpers sdCardHelpers;
 Dynamixel2Arduino dxl(Serial5, DYNAMIXEL_COMM_DIR);
 Dynamixel dynamixel(dxl);
 NeoPixels neoPixels;
 StepperWrapper stepperWrapper;
 SerialDataHandler serialDataHandler;
-StateManager stateManager;
 TimeWrapper timeWrapper;
-NetworkHandler networkHandler;
 
-unsigned long current_millis, previous_millis;
+elapsedMillis ledBlinkTimer = 0;
+const uint16_t ledBlinkIntervalIdleState = 1000;
+const uint16_t ledBlinkIntervalTestState = 250;
+const uint16_t ledBlinkIntervalErrorState = 50;
+bool LED_BUILTIN_STATE = LOW;
 
-void HardwareTest();
+elapsedMillis waitForSerialTimeout = 0;
 
-void setup()
+elapsedMicros playTimer = 0;
+const long fps = 60;
+const long playFrameInterval = 1000000 / fps;
+
+uint32_t startFrame = 0;
+uint32_t endFrame = 66199;
+uint32_t currentFrame = 0;
+uint16_t frameData[14];
+
+/// @brief Sets the board into error mode which can be skipped with the button A.
+/// @param errorMsg The error message to be logged.
+void error(String errorMsg)
 {
-  Serial.begin(500000);
-
-  delay(100);
-
-  pinMode(LED_BUILTIN, OUTPUT);
-  digitalWriteFast(LED_BUILTIN, LOW);
-
-  btn_a = Bounce2::Button();
-  btn_b = Bounce2::Button();
-  btn_a.attach(BTN_A, INPUT_PULLUP);
-  btn_a.interval(25);
-  btn_a.setPressedState(LOW);
-  btn_b.attach(BTN_B, INPUT_PULLUP);
-  btn_b.interval(25);
-  btn_b.setPressedState(LOW);
-
-  delay(100);
-
-  btn_a.update();
-  btn_b.update();
-
-  if (HARDWARETEST || btn_a.isPressed() || btn_b.isPressed())
+  Serial.print("STARTUP ERROR: ");
+  Serial.println(errorMsg);
+  Serial.println("Press A to continue.");
+  while (true)
   {
-    HardwareTest();
-    Serial.printf("\n\n");
-    Serial.println(F("Test finished."));
-    // Stop after HardwareTest
-    while (true)
-    {
-    }
-  }
-
-  sdCardHelpers.initSD();
-
-  delay(100);
-
-  stepperWrapper.setDirPins(false, true, false);
-  dynamixel.init_dxl();
-  neoPixels.init();
-
-  stateManager.setState(IDLE);
-
-  previous_millis = millis();
-}
-
-void loop()
-{
-  current_millis = millis();
-
-  btn_a.update();
-  btn_b.update();
-  stepperWrapper.updateEndSwitches();
-
-  if (serialDataHandler.receiveAsCSV())
-  {
-    switch (serialDataHandler.serialData.command)
-    {
-    case SerialCommand::STATE_CHANGE:
-      // setState(serialDataHandler.serialData.stateAsString); TODO
-      break;
-    case SerialCommand::SET_TIME:
-      timeWrapper.setCurrentTime(serialDataHandler.serialData.pctime);
-      break;
-    case SerialCommand::POSITION_DATA:
-      stepperWrapper.setNewStepperPositions(serialDataHandler.serialData.targetPositionsSteppers);
-      dynamixel.setNewDynamixelPositions(serialDataHandler.serialData.targetPositionsServos);
-      //     if (state == RUNNING)
-      //     {
-      //         // TODO enable again!
-      //         float speed_stepper_1 = stepper_0_speed_filtered.filter(fps * float(stepper_0.distanceToGo()) * 0.1f);
-      //         stepper_0.setSpeed(speed_stepper_1);
-      //         // TODO enable again!
-      //         float speed_stepper_2 = stepper_1_speed_filtered.filter(fps * float(stepper_1.distanceToGo()) * 0.1f);
-      //         stepper_1.setSpeed(speed_stepper_2);
-      //         // TODO enable again!
-      //         float speed_stepper_3 = stepper_2_speed_filtered.filter(fps * float(stepper_2.distanceToGo()) * 0.1f);
-      //         stepper_2.setSpeed(speed_stepper_3);
-      //     }
-      break;
-    default:
-      break;
-    }
-  }
-
-  if (current_millis - previous_millis > 100)
-  {
-    // Serial.print(current_millis);
-    // Serial.print(": ");
-    // Serial.print(btn_a.isPressed());
-    // Serial.print(" - ");
-    // Serial.print(btn_b.isPressed());
-    // Serial.print(" - ");
-    // Serial.print(limit_switch_0.isPressed());
-    // Serial.print(" - ");
-    // Serial.print(limit_switch_1.isPressed());
-    // Serial.print(" - ");
-    // Serial.println(limit_switch_2.isPressed());
-    previous_millis = current_millis;
-  }
-  if (btn_a.fell())
-  {
-    if (stateManager.getState() == HOMING_A || stateManager.getState() == HOMING_B)
-    {
-      stateManager.setState(States::IDLE);
-    }
-    else
-    {
-      stateManager.setState(States::HOMING_A);
-    }
-  }
-
-  if (btn_b.fell())
-  {
-    Serial.println("Rebooting Dynamixels");
-    dynamixel.disableTorque();
-    dynamixel.enableLEDs();
-    delay(2000);
-    dynamixel.rebootDynamixels();
-    dynamixel.disableLEDs();
-    dynamixel.enableTorque();
-
-    delay(300);
-    dynamixel.enableLEDs();
-    delay(300);
-    dynamixel.disableLEDs();
-  }
-
-  switch (stateManager.getState())
-  {
-  case States::IDLE:
-    serialDataHandler.receiveAsCSV();
-    break;
-  case States::RUNNING:
-    serialDataHandler.receiveAsCSV();
-    /* runSpeed(): Poll the motor and step it if a step is due, implementing a constant
-                   speed as set by the most recent call to setSpeed().
-                   You must call this as frequently as possible, but at least once per step interval.
-
-       runSpeedToPosition(): Executes runSpeed() unless the targetPosition is reached. This function
-                             needs to be called often just like runSpeed() or run().
-                             Will step the motor if a step is required at the currently selected speed
-                             unless the target position has been reached. Does not implement accelerations. */
-    stepperWrapper.runAllSpeedToPositions();
-    break;
-  case States::MANUAL:
-    serialDataHandler.receiveAsCSV();
-    /* run(): Poll the motor and step it if a step is due, implementing accelerations and decelerations to achieve the target position.
-       You must call this as frequently as possible, but at least once per minimum step time interval, preferably in your main loop.
-       Note that each call to run() will make at most one step, and then only when a step is due, based on the current speed and the time since the last step. */
-    stepperWrapper.runAll();
-    break;
-  case States::HOMING_A:
-    if (stepperWrapper.driveHoming_A())
-    {
-      stateManager.setState(States::HOMING_B);
-    }
-    break;
-  case States::HOMING_B:
-    if (stepperWrapper.driveHoming_B())
-    {
-      stepperWrapper.zeroPositions();
-      stateManager.setState(States::IDLE);
-    }
-    break;
-  default:
-    break;
-  }
-
-  // Enable LED_BUILTIN when a stepper is in running
-  // TODO Enable again:
-  // digitalWriteFast(LED_BUILTIN, stepper_0.isRunning() || stepper_1.isRunning() || stepper_2.isRunning());
-
-  // handle_current_state();
-}
-
-void HardwareTest()
-{
-  const unsigned long timeout = 10000;
-  elapsedMillis timer1sec, timer10sec, led_toggle;
-
-  bool LED_BUILTIN_STATE = LOW;
-  led_toggle = 0;
-  while (!Serial)
-  {
-    if (led_toggle > 250)
+    if (ledBlinkTimer > ledBlinkIntervalErrorState)
     {
       LED_BUILTIN_STATE = !LED_BUILTIN_STATE;
       digitalWriteFast(LED_BUILTIN, LED_BUILTIN_STATE);
-      led_toggle = 0;
+      ledBlinkTimer = 0;
+    }
+
+    btn_a.update();
+    if (btn_a.fell())
+    {
+      return;
+    }
+  }
+}
+
+/// @brief Switches into PLAY state and sets the needed variables.
+/// @param filename
+/// @param startFrame
+/// @param endFrame
+void playCallback(/*String filename, uint32_t startFrame, uint32_t endFrame*/)
+{
+  Serial.println("PLAY CALLBACK");
+  // Serial.println(filename);
+  // Serial.println(startFrame);
+  // Serial.println(endFrame);
+  StateManager::setState(States::PLAYING);
+}
+
+/// @brief Switches into IDLE state.
+void pauseCallback()
+{
+  Serial.println("PAUSE CALLBACK");
+  StateManager::setState(States::IDLE);
+}
+
+/// @brief Switches into HOME state.
+void homeCallback()
+{
+  if (StateManager::getState() == States::IDLE)
+  {
+    Serial.println("HOME CALLBACK");
+    dynamixel.rebootDynamixels();
+    dynamixel.disableTorque();
+    dynamixel.enableLEDs();
+
+    StateManager::setState(States::HOMING_A);
+    currentFrame = 0;
+  }
+  else
+  {
+    Serial.print("Can't switch to HOME because I'm not IDLE.");
+  }
+}
+
+/// @brief Runs 11 test routines for the hardware.
+void HardwareTest()
+{
+  const unsigned long timeout = 10000;
+  elapsedMillis timer1sec, timer10sec;
+
+  ledBlinkTimer = 0;
+  while (!Serial)
+  {
+    if (ledBlinkTimer > ledBlinkIntervalTestState)
+    {
+      LED_BUILTIN_STATE = !LED_BUILTIN_STATE;
+      digitalWriteFast(LED_BUILTIN, LED_BUILTIN_STATE);
+      ledBlinkTimer = 0;
     }
   }
 
@@ -337,13 +234,13 @@ void HardwareTest()
   // =============
   Serial.println(F("\nTest 5/11 - SD-Card"));
   Serial.println(F("-------------------"));
-  if (sdCardHelpers.initSD())
+  if (SDCardHelpers::initSD())
   {
     timer10sec = 0;
     timer1sec = 0;
     String filename, message;
     Serial.println(F("Files on SD-Card:"));
-    sdCardHelpers.printAllFiles();
+    SDCardHelpers::printAllFiles();
     Serial.println();
     while (timer10sec <= timeout - 1)
     {
@@ -372,7 +269,7 @@ void HardwareTest()
       }
     }
     Serial.println(F("Files on SD-Card:"));
-    sdCardHelpers.printAllFiles();
+    SDCardHelpers::printAllFiles();
     Serial.println();
   }
 
@@ -383,15 +280,19 @@ void HardwareTest()
   timer10sec = 0;
   timer1sec = 0;
   bool network_ok = false;
-  if (networkHandler.HardwareStatus())
+  if (!NetworkHandler::init())
+  {
+    Serial.println("Error initializing network handler");
+  }
+  if (NetworkHandler::HardwareStatus())
   {
     Serial.println(F("Hardware found"));
-    if (networkHandler.CableConnected())
+    if (NetworkHandler::CableConnected())
     {
       network_ok = true;
       Serial.println(F("Cable connected"));
       Serial.print(F("Local IP Address: "));
-      Serial.println(networkHandler.GetIp());
+      Serial.println(NetworkHandler::GetIp());
     }
     else
     {
@@ -408,7 +309,7 @@ void HardwareTest()
     int counter = 0;
     while (timer10sec <= timeout - 1)
     {
-      networkHandler.updateIncomingOSC();
+      NetworkHandler::updateIncomingOSC();
 
       if (timer1sec >= 1000)
       {
@@ -416,7 +317,7 @@ void HardwareTest()
         Serial.print(String((timeout - timer10sec) / 1000) + "... ");
 
         String osc_message = "Hello from mollusc motion #" + String(counter);
-        networkHandler.sendOSCString(osc_message);
+        NetworkHandler::sendOSCString(osc_message);
         counter++;
       }
     }
@@ -604,4 +505,286 @@ void HardwareTest()
   tempmon_PwrDwn();
 
   digitalWriteFast(LED_BUILTIN, LOW);
+}
+
+void setup()
+{
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWriteFast(LED_BUILTIN, HIGH);
+
+  Serial.begin(500000);
+
+  delay(100);
+  btn_a = Bounce2::Button();
+  btn_b = Bounce2::Button();
+  btn_a.attach(BTN_A, INPUT_PULLUP);
+  btn_a.interval(25);
+  btn_a.setPressedState(LOW);
+  btn_b.attach(BTN_B, INPUT_PULLUP);
+  btn_b.interval(25);
+  btn_b.setPressedState(LOW);
+
+  delay(100);
+
+  btn_a.update();
+  btn_b.update();
+
+  if (HARDWARETEST /* || btn_a.isPressed() || btn_b.isPressed()*/)
+  {
+    HardwareTest();
+    Serial.printf("\n\n");
+    Serial.println(F("Test finished."));
+    // Stop after HardwareTest
+    while (true)
+    {
+    }
+  }
+
+  waitForSerialTimeout = 0;
+  while (!Serial && (waitForSerialTimeout < 5000))
+  {
+  }
+
+  Serial.println(F("Welcome to molluscmotion."));
+
+  Serial.println(F("Initializing SD-Card."));
+  if (!SDCardHelpers::initSD())
+  {
+    error("Failed initializing sd card");
+  }
+  else
+  {
+    Serial.print(F("Loading file: "));
+    Serial.println(filename);
+    if (!SDCardHelpers::loadFileToExtmem(filename))
+    {
+      error("Failed loading file to extmem.");
+    }
+  }
+
+  delay(100);
+
+  Serial.println(F("Initializing network."));
+  if (!NetworkHandler::init())
+  {
+    error("Failed initializing network");
+  }
+  else
+  {
+    Serial.print(F("local IP: "));
+    Serial.println(NetworkHandler::GetIp());
+    NetworkHandler::registerPlayCallback(playCallback);
+    NetworkHandler::registerPauseCallback(pauseCallback);
+    NetworkHandler::registerHomeCallback(homeCallback);
+  }
+
+  delay(100);
+
+  dynamixel.init_dxl();
+  stepperWrapper.setDirPins(false, true, false);
+  neoPixels.init();
+
+  Serial.println(F("Initialization done, running."));
+  StateManager::setStepperWrapper(&stepperWrapper);
+  StateManager::setState(IDLE);
+}
+
+void loop()
+{
+
+  btn_a.update();
+  btn_b.update();
+  stepperWrapper.updateEndSwitches();
+
+  if (serialDataHandler.receiveAsCSV())
+  {
+    switch (serialDataHandler.serialData.command)
+    {
+    case SerialCommand::STATE_CHANGE:
+      // setState(serialDataHandler.serialData.stateAsString); TODO
+      break;
+    case SerialCommand::SET_TIME:
+      timeWrapper.setCurrentTime(serialDataHandler.serialData.pctime);
+      break;
+    case SerialCommand::POSITION_DATA:
+      stepperWrapper.setNewStepperPositions(serialDataHandler.serialData.targetPositionsSteppers);
+      dynamixel.setNewDynamixelPositions(serialDataHandler.serialData.targetPositionsServos);
+      //     if (state == RUNNING)
+      //     {
+      //         // TODO enable again!
+      //         float speed_stepper_1 = stepper_0_speed_filtered.filter(fps * float(stepper_0.distanceToGo()) * 0.1f);
+      //         stepper_0.setSpeed(speed_stepper_1);
+      //         // TODO enable again!
+      //         float speed_stepper_2 = stepper_1_speed_filtered.filter(fps * float(stepper_1.distanceToGo()) * 0.1f);
+      //         stepper_1.setSpeed(speed_stepper_2);
+      //         // TODO enable again!
+      //         float speed_stepper_3 = stepper_2_speed_filtered.filter(fps * float(stepper_2.distanceToGo()) * 0.1f);
+      //         stepper_2.setSpeed(speed_stepper_3);
+      //     }
+      break;
+    default:
+      break;
+    }
+  }
+
+  if (btn_a.fell())
+  {
+    if (StateManager::getState() == IDLE)
+    {
+      StateManager::setState(States::PLAYING);
+    }
+    else if (StateManager::getState() == States::PLAYING)
+    {
+      StateManager::setState(States::IDLE);
+    }
+    // if (StateManager::getState() == HOMING_A || StateManager::getState() == HOMING_B)
+    // {
+    //   StateManager::setState(States::IDLE);
+    // }
+    // else
+    // {
+    //   StateManager::setState(States::HOMING_A);
+    // }
+  }
+
+  if (btn_b.fell())
+  {
+    if (StateManager::getState() == States::IDLE)
+    {
+      dynamixel.rebootDynamixels();
+      dynamixel.disableTorque();
+      dynamixel.enableLEDs();
+
+      StateManager::setState(States::HOMING_A);
+    }
+    else if (StateManager::getState() == HOMING_A || StateManager::getState() == HOMING_B)
+    {
+      currentFrame = 0;
+      StateManager::setState(States::IDLE);
+    }
+  }
+
+  NetworkHandler::updateIncomingOSC();
+
+  switch (StateManager::getState())
+  {
+  case States::IDLE:
+    serialDataHandler.receiveAsCSV();
+    if (ledBlinkTimer > ledBlinkIntervalIdleState)
+    {
+      LED_BUILTIN_STATE = !LED_BUILTIN_STATE;
+      digitalWriteFast(LED_BUILTIN, LED_BUILTIN_STATE);
+      ledBlinkTimer = 0;
+    }
+    break;
+
+  case States::PLAYING:
+    if (playTimer >= playFrameInterval)
+    {
+      playTimer = 0;
+      SDCardHelpers::getFrame(currentFrame, frameData);
+      // Serial.printf("#%d\t", currentFrame);
+      // for (uint8_t i = 0; i < FRAME_DATA_SIZE / 2; i++)
+      // {
+      //   Serial.printf("%d\t", frameData[i]);
+      // }
+      // Serial.println();
+
+      for (uint8_t i = 0; i < 3; i++)
+      {
+        serialDataHandler.serialData.targetPositionsSteppers[i] = long(frameData[i]);
+      }
+      for (uint8_t i = 0; i < 11; i++)
+      {
+        serialDataHandler.serialData.targetPositionsServos[i] = long(frameData[i + 3]);
+      }
+      // memcpy(serialDataHandler.serialData.targetPositionsSteppers, frameData, 3);
+      // memcpy(serialDataHandler.serialData.targetPositionsServos, frameData + 3, 11);
+
+      /*
+      Serial.print("Target Positions Steppers: ");
+      for (uint8_t i = 0; i < 3; i++)
+      {
+        Serial.print(serialDataHandler.serialData.targetPositionsSteppers[i]);
+        Serial.print("\t");
+      }
+      Serial.println();
+      Serial.print("Target Positions Dynamixels: ");
+      for (uint8_t i = 0; i < 11; i++)
+      {
+        Serial.print(serialDataHandler.serialData.targetPositionsServos[i]);
+        Serial.print("\t");
+      }
+      Serial.println();
+      */
+
+      stepperWrapper.setNewStepperPositions(serialDataHandler.serialData.targetPositionsSteppers);
+      dynamixel.setNewDynamixelPositions(serialDataHandler.serialData.targetPositionsServos);
+
+      currentFrame++;
+      if (currentFrame >= endFrame)
+      {
+        StateManager::setState(States::IDLE);
+      }
+    }
+    stepperWrapper.runAllSpeedToPositions();
+    break;
+
+  case States::RUNNING:
+    serialDataHandler.receiveAsCSV();
+    /* runSpeed(): Poll the motor and step it if a step is due, implementing a constant
+                   speed as set by the most recent call to setSpeed().
+                   You must call this as frequently as possible, but at least once per step interval.
+
+       runSpeedToPosition(): Executes runSpeed() unless the targetPosition is reached. This function
+                             needs to be called often just like runSpeed() or run().
+                             Will step the motor if a step is required at the currently selected speed
+                             unless the target position has been reached. Does not implement accelerations. */
+    stepperWrapper.runAllSpeedToPositions();
+    break;
+
+  case States::MANUAL:
+    serialDataHandler.receiveAsCSV();
+    /* run(): Poll the motor and step it if a step is due, implementing accelerations and decelerations to achieve the target position.
+       You must call this as frequently as possible, but at least once per minimum step time interval, preferably in your main loop.
+       Note that each call to run() will make at most one step, and then only when a step is due, based on the current speed and the time since the last step. */
+    stepperWrapper.runAll();
+    break;
+
+  case States::HOMING_A:
+    // if (ledBlinkTimer > ledBlinkIntervalIdleState / 16)
+    // {
+    //   LED_BUILTIN_STATE = !LED_BUILTIN_STATE;
+    //   digitalWriteFast(LED_BUILTIN, LED_BUILTIN_STATE);
+    //   ledBlinkTimer = 0;
+    //   stepperWrapper.printEndSwitches();
+    // }
+
+    if (stepperWrapper.driveHoming_A())
+    {
+      stepperWrapper.zeroPositions();
+      StateManager::setState(States::HOMING_B);
+    }
+    break;
+
+  case States::HOMING_B:
+    if (stepperWrapper.driveHoming_B())
+    {
+      stepperWrapper.zeroPositions();
+      dynamixel.disableLEDs();
+      dynamixel.enableTorque();
+
+      StateManager::setState(States::IDLE);
+    }
+    break;
+
+  default:
+    break;
+  }
+
+  // Enable LED_BUILTIN when a stepper is in running
+  // TODO Enable again:
+  // digitalWriteFast(LED_BUILTIN, stepper_0.isRunning() || stepper_1.isRunning() || stepper_2.isRunning());
+
+  // handle_current_state();
 }

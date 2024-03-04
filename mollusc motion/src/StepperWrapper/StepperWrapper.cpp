@@ -1,5 +1,29 @@
 #include "StepperWrapper.h"
 
+// Stepper Motor Pins:
+#define STEPPER_0_DIR 4
+#define STEPPER_1_DIR 2
+#define STEPPER_2_DIR 0
+
+#define STEPPER_0_PULSE 5
+#define STEPPER_1_PULSE 3
+#define STEPPER_2_PULSE 1
+
+#define STEPPER_0_END 6
+#define STEPPER_1_END 7
+#define STEPPER_2_END 8
+
+#define STEPPER_ENABLE 9
+
+const float maxSpeed_Offset = 10000; // turn all a bit slower...
+// we figured out that the values below do work with our robot,
+// but it's super fast and stresses the mechanics quite a lot
+const float stepper_0_maxSpeed = 30000 - maxSpeed_Offset;
+const float stepper_1_maxSpeed = 20000 - maxSpeed_Offset;
+const float stepper_2_maxSpeed = 20000 - maxSpeed_Offset;
+
+const unsigned int minPulseWidth = 3;
+
 StepperWrapper::StepperWrapper()
 {
 
@@ -58,6 +82,24 @@ void StepperWrapper::setNewStepperPositions(long *targetPositions)
     stepper_1.moveTo(targetPositions[1]);
     stepper_2.moveTo(targetPositions[2]);
 
+    float speed_stepper_0 = stepper_0_speed_filtered.filter(fps * float(stepper_0.distanceToGo()) * 0.1f);
+    stepper_0.setSpeed(speed_stepper_0);
+
+    float speed_stepper_1 = stepper_1_speed_filtered.filter(fps * float(stepper_1.distanceToGo()) * 0.1f);
+    stepper_1.setSpeed(speed_stepper_1);
+
+    float speed_stepper_2 = stepper_2_speed_filtered.filter(fps * float(stepper_2.distanceToGo()) * 0.1f);
+    stepper_2.setSpeed(speed_stepper_2);
+
+    // float speed_stepper_0 = fps * float(stepper_0.distanceToGo());
+    // stepper_0.setSpeed(speed_stepper_0);
+
+    // float speed_stepper_1 = fps * float(stepper_1.distanceToGo());
+    // stepper_1.setSpeed(speed_stepper_1);
+
+    // float speed_stepper_2 = fps * float(stepper_2.distanceToGo());
+    // stepper_2.setSpeed(speed_stepper_2);
+
     // Serial.printf("Stepper 1 target pos: %d\n", stepper_0.targetPosition());
 }
 
@@ -68,17 +110,26 @@ void StepperWrapper::initIdle()
     stepper_1.setSpeed(0);
     stepper_2.setSpeed(0);
 
-    Serial.println(stepper_0.distanceToGo());
-    Serial.println(stepper_1.distanceToGo());
-    Serial.println(stepper_2.distanceToGo());
-    Serial.println(stepper_0.isRunning());
-    Serial.println(stepper_1.isRunning());
-    Serial.println(stepper_2.isRunning());
+    // Serial.println(stepper_0.distanceToGo());
+    // Serial.println(stepper_1.distanceToGo());
+    // Serial.println(stepper_2.distanceToGo());
+    // Serial.println(stepper_0.isRunning());
+    // Serial.println(stepper_1.isRunning());
+    // Serial.println(stepper_2.isRunning());
 }
 
 void StepperWrapper::initRunning()
 {
     Serial.println("initRunning()");
+
+    stepper_0.setMaxSpeed(stepper_0_maxSpeed);
+    stepper_1.setMaxSpeed(stepper_1_maxSpeed);
+    stepper_2.setMaxSpeed(stepper_2_maxSpeed);
+}
+
+void StepperWrapper::initPlay()
+{
+    Serial.println("initPlay()");
 
     stepper_0.setMaxSpeed(stepper_0_maxSpeed);
     stepper_1.setMaxSpeed(stepper_1_maxSpeed);
@@ -122,6 +173,8 @@ void StepperWrapper::initHoming_A()
 
 bool StepperWrapper::driveHoming_A()
 {
+    updateEndSwitches();
+
     bool e0 = limit_switch_0.isPressed();
     bool e1 = limit_switch_1.isPressed();
     bool e2 = limit_switch_2.isPressed();
@@ -146,7 +199,7 @@ bool StepperWrapper::driveHoming_A()
 
 void StepperWrapper::initHoming_B()
 {
-    Serial.println("initHoming_B");
+    Serial.println("initHoming_B()");
     const float acceleration = 1000;
 
     stepper_0.setMaxSpeed(1600);
@@ -168,9 +221,19 @@ void StepperWrapper::initHoming_B()
 
 bool StepperWrapper::driveHoming_B()
 {
+    // Serial.println("driveHoming_B()");
     stepper_0.run();
     stepper_1.run();
     stepper_2.run();
+
+    // Serial.print(F("current Positions: "));
+    // Serial.print(stepper_0.currentPosition());
+    // Serial.print("\t");
+    // Serial.print(stepper_1.currentPosition());
+    // Serial.print("\t");
+    // Serial.print(stepper_2.currentPosition());
+
+    // Serial.println();
 
     bool done = stepper_0.distanceToGo() == 0 &&
                 stepper_1.distanceToGo() == 0 &&
@@ -186,15 +249,27 @@ void StepperWrapper::updateEndSwitches()
     limit_switch_2.update();
 }
 
+void StepperWrapper::printEndSwitches()
+{
+    Serial.print(F("limit switches: "));
+    Serial.print(limit_switch_0.isPressed());
+    Serial.print("\t");
+    Serial.print(limit_switch_1.isPressed());
+    Serial.print("\t");
+    Serial.print(limit_switch_2.isPressed());
+    Serial.println();
+}
+
 void StepperWrapper::runAllSpeedToPositions()
 {
-    if (limit_switch_0.isPressed() || limit_switch_1.isPressed() || limit_switch_2.isPressed())
-        return;
+    // if (limit_switch_0.isPressed() || limit_switch_1.isPressed() || limit_switch_2.isPressed())
+    //     return;
 
     stepper_0.runSpeedToPosition();
     stepper_1.runSpeedToPosition();
     stepper_2.runSpeedToPosition();
 }
+
 void StepperWrapper::runAll()
 {
     if (limit_switch_0.isPressed() || limit_switch_1.isPressed() || limit_switch_2.isPressed())

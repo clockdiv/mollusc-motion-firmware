@@ -2,15 +2,19 @@
 
 const String StateManager::states[] = {"STARTUP",
                                        "IDLE",
+                                       "PLAYING",
                                        "RUNNING",
                                        "MANUAL",
                                        "HOMING_A",
                                        "HOMING_B"};
 
-StateManager::StateManager()
+States StateManager::current_state = STARTUP;
+States StateManager::state_old = STARTUP;
+StepperWrapper *StateManager::stepperWrapper;
+
+void StateManager::setStepperWrapper(StepperWrapper *extStepperWrapper)
 {
-    current_state = States::STARTUP;
-    state_old = States::STARTUP;
+    stepperWrapper = extStepperWrapper;
 }
 
 String StateManager::getStateAsString()
@@ -31,20 +35,25 @@ void StateManager::handleStateChange()
         // log_sd("changed state to: " + getStateAsString());
         switch (current_state)
         {
+        case States::STARTUP:
+            break;
         case States::IDLE:
-            // initIdle(); // TODO enable again!
+            stepperWrapper->initIdle();
+            break;
+        case States::PLAYING:
+            stepperWrapper->initPlay();
             break;
         case States::RUNNING:
-            // initRunning();// TODO enable again!
+            stepperWrapper->initRunning();
             break;
         case States::MANUAL:
-            // initManual();// TODO enable again!
+            stepperWrapper->initManual();
             break;
         case States::HOMING_A:
-            // initHoming_A();// TODO enable again!
+            stepperWrapper->initHoming_A();
             break;
         case States::HOMING_B:
-            // initHoming_B();// TODO enable again!
+            stepperWrapper->initHoming_B();
             break;
         default:
             break;

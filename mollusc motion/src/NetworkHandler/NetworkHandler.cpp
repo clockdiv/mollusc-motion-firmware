@@ -2,23 +2,42 @@
 
 byte NetworkHandler::mac[] = {0x04, 0xE9, 0xE5, 0x0E, 0x03, 0x82};
 EthernetUDP NetworkHandler::Udp;
-// const unsigned int NetworkHandler::outPort = 9999;   // the port to send to
-// const unsigned int NetworkHandler::localPort = 8888; // local port to listen on
 
-NetworkHandler::NetworkHandler()
+IPAddress NetworkHandler::outIp = IPAddress(192, 168, 235, 20);
+const unsigned int NetworkHandler::outPort = 9999;   // the port to send to
+const unsigned int NetworkHandler::localPort = 8888; // local port to listen on
+
+void (*NetworkHandler::playCallback)(/*String filename, uint32_t frame_start, uint32_t frame_end*/) = nullptr;
+void (*NetworkHandler::pauseCallback)() = nullptr;
+void (*NetworkHandler::homeCallback)() = nullptr;
+
+bool NetworkHandler::init()
 {
-    outIp = IPAddress(192, 168, 235, 20);
-    // ReplyBuffer = "acknowledged";       // a string to send back
+    Ethernet.begin(mac, 10000, 4000); // mac, timeout, responseTimeout
 
-    Ethernet.begin(mac);
-    if (HardwareStatus() && CableConnected())
+    if (HardwareStatus())
     {
-        NetworkHandler::Udp.begin(localPort);
+        if (CableConnected())
+        {
+            NetworkHandler::Udp.begin(localPort);
+        }
+        else
+        {
+            Serial.println(F("No ethernet cable connected."));
+            return false;
+        }
     }
+    else
+    {
+        Serial.println(F("Ethernet hardware not detected."));
+        return false;
+    }
+    return true;
 }
 
 void NetworkHandler::MessageReceived(OSCMessage &msg)
 {
+    Serial.println(F("Message received."));
     if (msg.isFloat(0))
     {
         Serial.print("\nReceived a float, ");
@@ -41,6 +60,48 @@ void NetworkHandler::MessageReceived(OSCMessage &msg)
     }
 }
 
+void NetworkHandler::dispatchPlay(OSCMessage &msg)
+{
+    // String filename = "";
+    // uint32_t startFrame = 0, endFrame = 0;
+
+    // if (msg.isString(0))
+    // {
+    //     char str[12];
+    //     filename = msg.getString(0, str);
+    //     filename = (char *)str;
+    // }
+    // if (msg.isInt(1))
+    // {
+    //     startFrame = msg.getInt(1);
+    // }
+    // if (msg.isInt(2))
+    // {
+    //     endFrame = msg.getInt(2);
+    // }
+
+    if (playCallback != nullptr)
+    {
+        playCallback(/*filename, startFrame, endFrame*/);
+    }
+}
+
+void NetworkHandler::dispatchPause(OSCMessage &msg)
+{
+    if (pauseCallback != nullptr)
+    {
+        pauseCallback();
+    }
+}
+
+void NetworkHandler::dispatchHome(OSCMessage &msg)
+{
+    if (homeCallback != nullptr)
+    {
+        homeCallback();
+    }
+}
+
 bool NetworkHandler::HardwareStatus()
 {
     if (Ethernet.hardwareStatus() == EthernetNoHardware)
@@ -52,11 +113,11 @@ bool NetworkHandler::HardwareStatus()
 
 bool NetworkHandler::CableConnected()
 {
-    if (Ethernet.linkStatus() == LinkOFF)
+    if (Ethernet.linkStatus() == LinkON)
     {
-        return false;
+        return true;
     }
-    return true;
+    return false;
 }
 
 String NetworkHandler::GetIp()
@@ -83,6 +144,11 @@ String NetworkHandler::IpToString(IPAddress &ip)
 
 void NetworkHandler::updateIncomingOSC()
 {
+    if (!CableConnected())
+    {
+        return;
+    }
+
     OSCBundle bundleIN;
     int osc_bundle_size;
 
@@ -96,6 +162,11 @@ void NetworkHandler::updateIncomingOSC()
         if (!bundleIN.hasError())
         {
             bundleIN.dispatch("/test", NetworkHandler::MessageReceived);
+
+            bundleIN.dispatch("/play", NetworkHandler::dispatchPlay);
+            // bundleIN.dispatch("/loop", NetworkHandler::MessageReceived);
+            bundleIN.dispatch("/pause", NetworkHandler::dispatchPause);
+            bundleIN.dispatch("/home", NetworkHandler::dispatchHome);
             bundleIN.empty();
         }
     }
@@ -114,4 +185,19 @@ void NetworkHandler::sendOSCString(String message)
     bundleOut.send(Udp);
     Udp.endPacket();
     bundleOut.empty();
+}
+
+void NetworkHandler::registerPlayCallback(void (*callback)(/*String filename, uint32_t frame_start, uint32_t frame_end*/))
+{
+    playCallback = callback;
+}
+
+void NetworkHandler::registerPauseCallback(void (*callback)())
+{
+    pauseCallback = callback;
+}
+
+void NetworkHandler::registerHomeCallback(void (*callback)())
+{
+    homeCallback = callback;
 }
