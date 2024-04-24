@@ -31,8 +31,10 @@ bool SerialDataHandler::receiveAsCSV()
 {
     if (Serial.available() > 0)
     {
+        Serial.println("String received: ");
         // current_millis_serial_received = millis();
         String incomingString = Serial.readStringUntil('\n');
+        Serial.println(incomingString);
         if (incomingString == "MANUAL")
         {
             serialData.command = STATE_CHANGE;
@@ -59,11 +61,16 @@ bool SerialDataHandler::receiveAsCSV()
         else
         {
             serialData.command = SerialCommand::POSITION_DATA;
-            long targetPositions[14];
+            // long targetPositions[14];
+            long targetPositions[4];
             comma_separated_string_to_long_array(incomingString, targetPositions);
-            // index 0-2 are for the Stepper Motors, 3-13 are for the Servos
-            memcpy(serialData.targetPositionsSteppers, targetPositions, 3);
-            memcpy(serialData.targetPositionsServos, targetPositions + 3, 11);
+
+            // // index 0-2 are for the Stepper Motors, 3-13 are for the Servos
+            // memcpy(serialData.targetPositionsSteppers, targetPositions, 3);
+            // memcpy(serialData.targetPositionsServos, targetPositions + 3, 11);
+
+            // index 0-3 are for the Stepper Motors
+            memcpy(serialData.targetPositionsSteppers, targetPositions, 4);
         }
         return true;
     }

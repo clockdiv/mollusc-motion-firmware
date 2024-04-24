@@ -2,6 +2,9 @@
 #include <SD.h>
 #include <SPI.h>
 #include <WS2812Serial.h>
+// #include <iostream>
+// #include <stdio.h>
+#include <map>
 
 #include <Bounce2.h>
 
@@ -116,6 +119,61 @@ void homeCallback()
   }
 }
 
+bool hardwaretestButtonA()
+{
+  btn_a.update();
+  return btn_a.fell();
+}
+
+bool hardwaretestButtonB()
+{
+  btn_b.update();
+  return btn_b.fell();
+}
+
+bool hardwaretestInitMotors()
+{
+  stepperWrapper.stepper[0].setPinsInverted(false, false, false); // direction, step, enabled
+  stepperWrapper.stepper[1].setPinsInverted(true, true, false);   // direction, step, enabled
+  stepperWrapper.stepper[2].setPinsInverted(true, true, false);   // direction, step, enabled
+  stepperWrapper.stepper[3].setPinsInverted(false, true, false);  // direction, step, enabled
+
+  stepperWrapper.stepper[0].setCurrentPosition(0);
+  stepperWrapper.stepper[0].setMaxSpeed(100);
+  stepperWrapper.stepper[0].setAcceleration(20);
+  stepperWrapper.stepper[0].moveTo(500);
+
+  stepperWrapper.stepper[1].setCurrentPosition(0);
+  stepperWrapper.stepper[1].setMaxSpeed(500);
+  stepperWrapper.stepper[1].setAcceleration(100);
+  stepperWrapper.stepper[1].moveTo(1500);
+
+  stepperWrapper.stepper[2].setCurrentPosition(0);
+  stepperWrapper.stepper[2].setMaxSpeed(450);
+  stepperWrapper.stepper[2].setAcceleration(100);
+  stepperWrapper.stepper[2].moveTo(400);
+
+  stepperWrapper.stepper[3].setCurrentPosition(0);
+  stepperWrapper.stepper[3].setMaxSpeed(550);
+  stepperWrapper.stepper[3].setAcceleration(120);
+  stepperWrapper.stepper[3].moveTo(600);
+
+  return true;
+}
+
+bool hardwaretestDriveMotors()
+{
+  // If at the end of travel go to the other end
+  for (uint8_t i = 0; i < stepperWrapper.stepperCount; i++)
+  {
+    if (stepperWrapper.stepper[i].distanceToGo() == 0)
+      stepperWrapper.stepper[i].moveTo(-stepperWrapper.stepper[i].currentPosition());
+
+    stepperWrapper.stepper[i].run();
+  }
+
+  return false;
+}
 /// @brief Runs 11 test routines for the hardware.
 void HardwareTest()
 {
@@ -136,59 +194,48 @@ void HardwareTest()
   digitalWriteFast(LED_BUILTIN, HIGH);
   Serial.println(F("Entered Testmode"));
   Serial.println(F("================"));
-  Serial.println();
 
-  // Test Button A
-  // =============
-  Serial.println(F("\nTest 1/11 - Button A"));
-  Serial.println(F("--------------------"));
-  timer10sec = 0;
-  timer1sec = 0;
-  while (true)
+  // Map functions with a name; the order is specified below.
+  std::map<bool (*)(), String> hardwaretestWithNames;
+  hardwaretestWithNames[hardwaretestButtonA] = "Button A (Please press Button A)";
+  hardwaretestWithNames[hardwaretestButtonB] = "Button B (Please press Button A)";
+  hardwaretestWithNames[hardwaretestDriveMotors] = "Driving Motors (press any Button to end)";
+
+  // in this array we define the order of the tests
+  bool (*hardwaretest[])() = {
+
+      hardwaretestWithNames.find(hardwaretestDriveMotors)->first,
+      hardwaretestWithNames.find(hardwaretestButtonA)->first,
+      hardwaretestWithNames.find(hardwaretestButtonB)->first,
+  };
+  int hardwaretestCount = sizeof(hardwaretest) / sizeof(bool *);
+
+  hardwaretestInitMotors();
+
+  for (int i = 0; i < hardwaretestCount; i++)
   {
-    btn_a.update();
-    if (timer1sec >= 1000)
+    String testmethodName = hardwaretestWithNames.find(hardwaretest[i])->second;
+    Serial.printf("\n___%d/%d \"%s\" ", i + 1, hardwaretestCount, testmethodName.c_str());
+
+    unsigned long testTimeout = 1000;
+    bool testResult = false;
+    for (uint8_t j = 10; j > 0; j--)
     {
-      timer1sec = timer1sec - 1000;
-      Serial.print(String((timeout - timer10sec) / 1000) + "... ");
+      elapsedMillis testTimer = 0;
+      Serial.printf("%d..", j);
+      while (testTimer < testTimeout && !testResult)
+      {
+        testResult = hardwaretest[i]();
+      }
+      if (testResult)
+        break;
     }
-    if (btn_a.fell())
-    {
-      Serial.println(F("Button A working"));
-      break;
-    }
-    if (timer10sec >= timeout - 1)
-    {
-      Serial.println(F("Timeout"));
-      break;
-    }
+    String result = "";
+    testResult == true ? result = "ok" : result = "FAILED";
+    Serial.printf(" %s", result.c_str());
   }
 
-  // Test Button B
-  // =============
-  Serial.println(F("\nTest 2/11 - Button B"));
-  Serial.println(F("--------------------"));
-  timer10sec = 0;
-  timer1sec = 0;
-  while (true)
-  {
-    btn_b.update();
-    if (timer1sec >= 1000)
-    {
-      timer1sec = timer1sec - 1000;
-      Serial.print(String((timeout - timer10sec) / 1000) + "... ");
-    }
-    if (btn_b.fell())
-    {
-      Serial.println(F("Button B working"));
-      break;
-    }
-    if (timer10sec >= timeout)
-    {
-      Serial.println(F("Timeout"));
-      break;
-    }
-  }
+  return;
 
   // Test RealTimeClock
   // ==================
@@ -406,38 +453,51 @@ void HardwareTest()
       Serial.print(String((timeout - timer10sec) / 1000) + "... ");
     }
 
-    if (stepperWrapper.limit_switch_0.fell())
+    for (uint8_t i = 0; i < stepperWrapper.stepperCount; i++)
     {
-      Serial.println(F("\nLimit switch 0 pressed"));
-      timer10sec = 0;
+      if (stepperWrapper.limitSwitch[i].fell())
+      {
+        Serial.printf("\nLimit switch %d pressed\n", i);
+        timer10sec = 0;
+      }
+      else if (stepperWrapper.limitSwitch[i].rose())
+      {
+        Serial.printf("\nLimit switch %d released\n", i);
+        timer10sec = 0;
+      }
     }
-    else if (stepperWrapper.limit_switch_0.rose())
-    {
-      Serial.println(F("\nLimit switch 0 released"));
-      timer10sec = 0;
-    }
+    // if (stepperWrapper.limit_switch_0.fell())
+    // {
+    //   Serial.println(F("\nLimit switch 0 pressed"));
+    //   timer10sec = 0;
+    // }
+    // else if (stepperWrapper.limit_switch_0.rose())
+    // {
+    //   Serial.println(F("\nLimit switch 0 released"));
+    //   timer10sec = 0;
+    // }
 
-    if (stepperWrapper.limit_switch_1.fell())
-    {
-      Serial.println(F("\nLimit switch 1 pressed"));
-      timer10sec = 0;
-    }
-    else if (stepperWrapper.limit_switch_1.rose())
-    {
-      Serial.println(F("\nLimit switch 1 released"));
-      timer10sec = 0;
-    }
+    // if (stepperWrapper.limit_switch_1.fell())
+    // {
+    //   Serial.println(F("\nLimit switch 1 pressed"));
+    //   timer10sec = 0;
+    // }
+    // else if (stepperWrapper.limit_switch_1.rose())
+    // {
+    //   Serial.println(F("\nLimit switch 1 released"));
+    //   timer10sec = 0;
+    // }
 
-    if (stepperWrapper.limit_switch_2.fell())
-    {
-      Serial.println(F("\nLimit switch 2 pressed"));
-      timer10sec = 0;
-    }
-    else if (stepperWrapper.limit_switch_2.rose())
-    {
-      Serial.println(F("\nLimit switch 2 released"));
-      timer10sec = 0;
-    }
+    // if (stepperWrapper.limit_switch_2.fell())
+    // {
+    //   Serial.println(F("\nLimit switch 2 pressed"));
+    //   timer10sec = 0;
+    // }
+    // else if (stepperWrapper.limit_switch_2.rose())
+    // {
+    //   Serial.println(F("\nLimit switch 2 released"));
+    //   timer10sec = 0;
+    // }
   }
   Serial.println();
 
@@ -448,7 +508,7 @@ void HardwareTest()
   Serial.println(F("All Steppers move 15000 steps forward and backwards."));
   timer10sec = 0;
   timer1sec = 0;
-  stepperWrapper.setDirPins(false, false, false);
+  stepperWrapper.setDirPins(false, false, false, false);
 
   long targetPositionsSteppers[] = {15000, 15000, 15000};
   stepperWrapper.initManual();
@@ -581,7 +641,7 @@ void setup()
   delay(100);
 
   dynamixel.init_dxl();
-  stepperWrapper.setDirPins(false, true, false);
+  stepperWrapper.setDirPins(false, false, false, false);
   neoPixels.init();
 
   Serial.println(F("Initialization done, running."));
@@ -608,7 +668,7 @@ void loop()
       break;
     case SerialCommand::POSITION_DATA:
       stepperWrapper.setNewStepperPositions(serialDataHandler.serialData.targetPositionsSteppers);
-      dynamixel.setNewDynamixelPositions(serialDataHandler.serialData.targetPositionsServos);
+      // dynamixel.setNewDynamixelPositions(serialDataHandler.serialData.targetPositionsServos);
       //     if (state == RUNNING)
       //     {
       //         // TODO enable again!
@@ -690,16 +750,14 @@ void loop()
       // }
       // Serial.println();
 
-      for (uint8_t i = 0; i < 3; i++)
+      for (uint8_t i = 0; i < 4; i++)
       {
         serialDataHandler.serialData.targetPositionsSteppers[i] = long(frameData[i]);
       }
-      for (uint8_t i = 0; i < 11; i++)
-      {
-        serialDataHandler.serialData.targetPositionsServos[i] = long(frameData[i + 3]);
-      }
-      // memcpy(serialDataHandler.serialData.targetPositionsSteppers, frameData, 3);
-      // memcpy(serialDataHandler.serialData.targetPositionsServos, frameData + 3, 11);
+      // for (uint8_t i = 0; i < 11; i++)
+      // {
+      //   serialDataHandler.serialData.targetPositionsServos[i] = long(frameData[i + 3]);
+      // }
 
       /*
       Serial.print("Target Positions Steppers: ");
@@ -719,7 +777,7 @@ void loop()
       */
 
       stepperWrapper.setNewStepperPositions(serialDataHandler.serialData.targetPositionsSteppers);
-      dynamixel.setNewDynamixelPositions(serialDataHandler.serialData.targetPositionsServos);
+      // dynamixel.setNewDynamixelPositions(serialDataHandler.serialData.targetPositionsServos);
 
       currentFrame++;
       if (currentFrame >= endFrame)
