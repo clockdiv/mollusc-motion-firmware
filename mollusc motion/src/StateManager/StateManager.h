@@ -31,6 +31,7 @@ public:
     static States getState();
     static void handleStateChange();
     static void setState(States new_state);
+    static void setStateFromString(String new_state);
     // void handle_current_state();
 };
 

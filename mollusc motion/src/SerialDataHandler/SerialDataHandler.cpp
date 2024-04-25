@@ -31,7 +31,6 @@ bool SerialDataHandler::receiveAsCSV()
 {
     if (Serial.available() > 0)
     {
-        Serial.println("String received: ");
         // current_millis_serial_received = millis();
         String incomingString = Serial.readStringUntil('\n');
         Serial.println(incomingString);
@@ -44,6 +43,16 @@ bool SerialDataHandler::receiveAsCSV()
         {
             serialData.command = STATE_CHANGE;
             strcpy(serialData.stateAsString, "RUNNING");
+        }
+        else if (incomingString == "IDLE")
+        {
+            serialData.command = STATE_CHANGE;
+            strcpy(serialData.stateAsString, "IDLE");
+        }
+        else if (incomingString == "HOMINGA")
+        {
+            serialData.command = STATE_CHANGE;
+            strcpy(serialData.stateAsString, "HOMING_A");
         }
         else if (incomingString.charAt(0) == 'T')
         {
@@ -70,7 +79,7 @@ bool SerialDataHandler::receiveAsCSV()
             // memcpy(serialData.targetPositionsServos, targetPositions + 3, 11);
 
             // index 0-3 are for the Stepper Motors
-            memcpy(serialData.targetPositionsSteppers, targetPositions, 4);
+            memcpy(serialData.targetPositionsSteppers, targetPositions, sizeof(targetPositions));
         }
         return true;
     }

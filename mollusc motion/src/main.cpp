@@ -47,6 +47,9 @@ bool LED_BUILTIN_STATE = LOW;
 
 elapsedMillis waitForSerialTimeout = 0;
 
+elapsedMillis debugMessageTimer = 0;
+const unsigned long debugMessageInterval = 1000;
+
 elapsedMicros playTimer = 0;
 const long fps = 60;
 const long playFrameInterval = 1000000 / fps;
@@ -600,6 +603,8 @@ void setup()
     }
   }
 
+  /*
+
   waitForSerialTimeout = 0;
   while (!Serial && (waitForSerialTimeout < 5000))
   {
@@ -638,10 +643,34 @@ void setup()
     NetworkHandler::registerHomeCallback(homeCallback);
   }
 
+  */
+
   delay(100);
 
   dynamixel.init_dxl();
-  stepperWrapper.setDirPins(false, false, false, false);
+
+  // stepperWrapper.setDirPins(false, false, false, false);
+
+  stepperWrapper.stepper[0].setPinsInverted(true, false, false); // direction, step, enabled
+  stepperWrapper.stepper[1].setPinsInverted(false, true, false); // direction, step, enabled
+  stepperWrapper.stepper[2].setPinsInverted(true, true, false);  // direction, step, enabled
+  stepperWrapper.stepper[3].setPinsInverted(false, true, false); // direction, step, enabled
+
+  stepperWrapper.stepper[0].setMaxSpeed(100);
+  stepperWrapper.stepper[1].setMaxSpeed(500);
+  stepperWrapper.stepper[2].setMaxSpeed(450);
+  stepperWrapper.stepper[3].setMaxSpeed(550);
+
+  stepperWrapper.stepper[0].setAcceleration(20);
+  stepperWrapper.stepper[1].setAcceleration(100);
+  stepperWrapper.stepper[2].setAcceleration(100);
+  stepperWrapper.stepper[3].setAcceleration(120);
+
+  stepperWrapper.stepper[0].setCurrentPosition(10000); // Body
+  stepperWrapper.stepper[1].setCurrentPosition(10000); // Neck
+  stepperWrapper.stepper[2].setCurrentPosition(0);     // Head Left
+  stepperWrapper.stepper[3].setCurrentPosition(0);     // Head Right
+
   neoPixels.init();
 
   Serial.println(F("Initialization done, running."));
@@ -661,13 +690,22 @@ void loop()
     switch (serialDataHandler.serialData.command)
     {
     case SerialCommand::STATE_CHANGE:
-      // setState(serialDataHandler.serialData.stateAsString); TODO
+      StateManager::setStateFromString(String(serialDataHandler.serialData.stateAsString));
       break;
     case SerialCommand::SET_TIME:
       timeWrapper.setCurrentTime(serialDataHandler.serialData.pctime);
       break;
     case SerialCommand::POSITION_DATA:
       stepperWrapper.setNewStepperPositions(serialDataHandler.serialData.targetPositionsSteppers);
+      // if (String(serialDataHandler.serialData.stateAsString) == "RUNNING")
+      // {
+      //   StateManager::setState(States::RUNNING);
+      // }
+      // else if (String(serialDataHandler.serialData.stateAsString) == "MANUAL")
+      // {
+      //   StateManager::setState(States::MANUAL);
+      // }
+
       // dynamixel.setNewDynamixelPositions(serialDataHandler.serialData.targetPositionsServos);
       //     if (state == RUNNING)
       //     {
@@ -724,7 +762,7 @@ void loop()
     }
   }
 
-  NetworkHandler::updateIncomingOSC();
+  // NetworkHandler::updateIncomingOSC();
 
   switch (StateManager::getState())
   {
@@ -789,7 +827,7 @@ void loop()
     break;
 
   case States::RUNNING:
-    serialDataHandler.receiveAsCSV();
+    // serialDataHandler.receiveAsCSV();
     /* runSpeed(): Poll the motor and step it if a step is due, implementing a constant
                    speed as set by the most recent call to setSpeed().
                    You must call this as frequently as possible, but at least once per step interval.
@@ -802,7 +840,7 @@ void loop()
     break;
 
   case States::MANUAL:
-    serialDataHandler.receiveAsCSV();
+    // serialDataHandler.receiveAsCSV();
     /* run(): Poll the motor and step it if a step is due, implementing accelerations and decelerations to achieve the target position.
        You must call this as frequently as possible, but at least once per minimum step time interval, preferably in your main loop.
        Note that each call to run() will make at most one step, and then only when a step is due, based on the current speed and the time since the last step. */
@@ -828,7 +866,7 @@ void loop()
   case States::HOMING_B:
     if (stepperWrapper.driveHoming_B())
     {
-      stepperWrapper.zeroPositions();
+      // stepperWrapper.zeroPositions();
       dynamixel.disableLEDs();
       dynamixel.enableTorque();
 
@@ -845,4 +883,11 @@ void loop()
   // digitalWriteFast(LED_BUILTIN, stepper_0.isRunning() || stepper_1.isRunning() || stepper_2.isRunning());
 
   // handle_current_state();
+
+  if (debugMessageTimer > debugMessageInterval)
+  {
+    debugMessageTimer = 0;
+    Serial.print("State: ");
+    Serial.println(StateManager::getStateAsString());
+  }
 }

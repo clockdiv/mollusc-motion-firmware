@@ -7,6 +7,7 @@
 #include "../averageFilter.h"
 
 #define STEPPER_COUNT 4
+#define HOMING_TIMEOUT true
 
 class StepperWrapper
 {
@@ -14,7 +15,6 @@ private:
     // AccelStepper stepper_0;
     // AccelStepper stepper_1;
     // AccelStepper stepper_2;
-
 
     // averageFilter stepper_0_speed_filtered;
     // averageFilter stepper_1_speed_filtered;
@@ -26,6 +26,9 @@ private:
     float stepperAcceleration[STEPPER_COUNT];
     const long fps = 60; // redundant
     const unsigned int minPulseWidth = 3;
+
+    elapsedMillis homingTimeoutTimer;
+    const unsigned long homingTimeout = 8000;
 
 public:
     // Bounce2::Button limit_switch_0;

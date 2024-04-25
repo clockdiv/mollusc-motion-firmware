@@ -71,6 +71,31 @@ void StateManager::setState(States state)
     handleStateChange();
 }
 
+void StateManager::setStateFromString(String new_state)
+{
+    if (new_state == "RUNNING")
+    {
+        current_state = States::RUNNING;
+    }
+    else if (new_state == "MANUAL")
+    {
+        current_state = States::MANUAL;
+    }
+    else if (new_state == "IDLE")
+    {
+        current_state = States::IDLE;
+    }
+    else if (new_state == "HOMING_A")
+    {
+        current_state = States::HOMING_A;
+    }
+    else
+    {
+        current_state = States::IDLE;
+    }
+    handleStateChange();
+}
+
 // void StateManager::handle_current_state()
 // {
 //     // Switch to IDLE if all tasks are done
