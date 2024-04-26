@@ -48,7 +48,7 @@ bool LED_BUILTIN_STATE = LOW;
 elapsedMillis waitForSerialTimeout = 0;
 
 elapsedMillis debugMessageTimer = 0;
-const unsigned long debugMessageInterval = 1000;
+const unsigned long debugMessageInterval = 3000;
 
 elapsedMicros playTimer = 0;
 const long fps = 60;

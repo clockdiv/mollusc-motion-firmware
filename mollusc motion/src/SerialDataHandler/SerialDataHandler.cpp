@@ -33,7 +33,7 @@ bool SerialDataHandler::receiveAsCSV()
     {
         // current_millis_serial_received = millis();
         String incomingString = Serial.readStringUntil('\n');
-        Serial.println(incomingString);
+        // Serial.println(incomingString);
         if (incomingString == "MANUAL")
         {
             serialData.command = STATE_CHANGE;
