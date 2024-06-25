@@ -324,8 +324,8 @@ void StepperWrapper::initHoming_B()
         stepper[i].move(800);
     }
 
-    stepper[0].move(3000); // Body
-    stepper[1].move(3000); // Neck
+    stepper[0].move(2000); // Body
+    stepper[1].move(3500); // Neck
     stepper[2].move(1500); // Head Left
     stepper[3].move(1500); // Head Right
 
