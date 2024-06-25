@@ -17,7 +17,6 @@ void SDCardHelpers::printDirectory(File dir, int numTabs)
 {
     while (true)
     {
-
         File entry = dir.openNextFile();
         if (!entry)
         {

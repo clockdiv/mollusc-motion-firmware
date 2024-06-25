@@ -18,6 +18,7 @@
 #include "TimeWrapper/TimeWrapper.h"
 #include "PSRamHandler/PSRamHandler.h"
 #include "NetworkHandler/NetworkHandler.h"
+#include "Settings.h"
 
 #include "averageFilter.h"
 

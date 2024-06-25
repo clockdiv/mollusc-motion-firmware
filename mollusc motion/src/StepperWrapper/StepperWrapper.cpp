@@ -3,23 +3,6 @@
 #define IGNORE_LIMIT_SWITCHES true
 
 // Stepper Motor Pins:
-#define STEPPER_0_DIR 4
-#define STEPPER_0_PULSE 5
-#define STEPPER_0_END 6
-
-#define STEPPER_1_DIR 2
-#define STEPPER_1_PULSE 3
-#define STEPPER_1_END 7
-
-#define STEPPER_2_DIR 0
-#define STEPPER_2_PULSE 1
-#define STEPPER_2_END 8
-
-#define STEPPER_3_DIR 10
-#define STEPPER_3_PULSE 11
-#define STEPPER_3_END 12
-
-#define STEPPER_ENABLE 9
 
 // const float maxSpeed_Offset = 10000; // turn all a bit slower...
 // // we figured out that the values below do work with our robot,
@@ -37,19 +20,23 @@ StepperWrapper::StepperWrapper()
     // stepper_1 = AccelStepper(AccelStepper::DRIVER, STEPPER_1_PULSE, STEPPER_1_DIR);
     // stepper_2 = AccelStepper(AccelStepper::DRIVER, STEPPER_2_PULSE, STEPPER_2_DIR);
 
-    stepper[0] = AccelStepper(AccelStepper::DRIVER, STEPPER_0_PULSE, STEPPER_0_DIR);
-    stepper[1] = AccelStepper(AccelStepper::DRIVER, STEPPER_1_PULSE, STEPPER_1_DIR);
-    stepper[2] = AccelStepper(AccelStepper::DRIVER, STEPPER_2_PULSE, STEPPER_2_DIR);
-    stepper[3] = AccelStepper(AccelStepper::DRIVER, STEPPER_3_PULSE, STEPPER_3_DIR);
+    // stepper[0] = AccelStepper(AccelStepper::DRIVER, STEPPER_0_PULSE, STEPPER_0_DIR);
+    // stepper[1] = AccelStepper(AccelStepper::DRIVER, STEPPER_1_PULSE, STEPPER_1_DIR);
+    // stepper[2] = AccelStepper(AccelStepper::DRIVER, STEPPER_2_PULSE, STEPPER_2_DIR);
+    // stepper[3] = AccelStepper(AccelStepper::DRIVER, STEPPER_3_PULSE, STEPPER_3_DIR);
 
     for (uint8_t i = 0; i < STEPPER_COUNT; i++)
     {
+        stepper[i] = AccelStepper(AccelStepper::DRIVER, pulsePins[i], directionPins[i]);
+        stepper[i].setMinPulseWidth(minPulseWidth);
         stepperMaxSpeed[i] = 20000;
         stepperAcceleration[i] = 60000;
     }
     for (uint8_t i = 0; i < STEPPER_COUNT; i++)
     {
-        stepper[i].setMinPulseWidth(minPulseWidth);
+    }
+    for (uint8_t i = 0; i < STEPPER_COUNT; i++)
+    {
     }
     // stepper_0.setMinPulseWidth(minPulseWidth);
     // stepper_0.setPinsInverted(false, false, false); // direction, step, enabled
