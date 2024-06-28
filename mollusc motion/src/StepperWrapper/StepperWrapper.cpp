@@ -29,14 +29,14 @@ StepperWrapper::StepperWrapper()
     {
         stepper[i] = AccelStepper(AccelStepper::DRIVER, pulsePins[i], directionPins[i]);
         stepper[i].setMinPulseWidth(minPulseWidth);
+
         stepperMaxSpeed[i] = 20000;
         stepperAcceleration[i] = 60000;
-    }
-    for (uint8_t i = 0; i < STEPPER_COUNT; i++)
-    {
-    }
-    for (uint8_t i = 0; i < STEPPER_COUNT; i++)
-    {
+
+        limitSwitch[i] = Bounce2::Button();
+        limitSwitch[i].interval(25);
+        limitSwitch[i].setPressedState(LOW);
+        limitSwitch[i].attach(limitswitchPins[i], INPUT_PULLUP);
     }
     // stepper_0.setMinPulseWidth(minPulseWidth);
     // stepper_0.setPinsInverted(false, false, false); // direction, step, enabled
@@ -51,16 +51,10 @@ StepperWrapper::StepperWrapper()
     // limit_switch_1 = Bounce2::Button();
     // limit_switch_2 = Bounce2::Button();
 
-    for (uint8_t i = 0; i < STEPPER_COUNT; i++)
-    {
-        limitSwitch[i] = Bounce2::Button();
-        limitSwitch[i].interval(25);
-        limitSwitch[i].setPressedState(LOW);
-    }
-    limitSwitch[0].attach(STEPPER_0_END, INPUT_PULLUP);
-    limitSwitch[1].attach(STEPPER_1_END, INPUT_PULLUP);
-    limitSwitch[2].attach(STEPPER_2_END, INPUT_PULLUP);
-    limitSwitch[3].attach(STEPPER_3_END, INPUT_PULLUP);
+    // limitSwitch[0].attach(STEPPER_0_END, INPUT_PULLUP);
+    // limitSwitch[1].attach(STEPPER_1_END, INPUT_PULLUP);
+    // limitSwitch[2].attach(STEPPER_2_END, INPUT_PULLUP);
+    // limitSwitch[3].attach(STEPPER_3_END, INPUT_PULLUP);
 
     // limit_switch_0.attach(STEPPER_0_END, INPUT_PULLUP);
     // limit_switch_0.interval(25);
