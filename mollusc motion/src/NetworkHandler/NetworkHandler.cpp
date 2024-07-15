@@ -63,7 +63,7 @@ void NetworkHandler::MessageReceived(OSCMessage &msg)
 void NetworkHandler::dispatchPlay(OSCMessage &msg)
 {
     // String filename = "";
-    // uint32_t startFrame = 0, endFrame = 0;
+    // uint32_t startFrame = 0, frameCount = 0;
 
     // if (msg.isString(0))
     // {
@@ -77,12 +77,12 @@ void NetworkHandler::dispatchPlay(OSCMessage &msg)
     // }
     // if (msg.isInt(2))
     // {
-    //     endFrame = msg.getInt(2);
+    //     frameCount = msg.getInt(2);
     // }
 
     if (playCallback != nullptr)
     {
-        playCallback(/*filename, startFrame, endFrame*/);
+        playCallback(/*filename, startFrame, frameCount*/);
     }
 }
 

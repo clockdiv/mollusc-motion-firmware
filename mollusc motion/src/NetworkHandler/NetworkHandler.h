@@ -40,7 +40,7 @@ public:
     static bool HardwareStatus();
     static bool CableConnected();
 
-    static void registerPlayCallback(void (*callback)(/*String filename, uint32_t startFrame, uint32_t endFrame*/));
+    static void registerPlayCallback(void (*callback)(/*String filename, uint32_t startFrame, uint32_t frameCount*/));
     static void registerPauseCallback(void (*callback)());
     static void registerHomeCallback(void (*callback)());
 

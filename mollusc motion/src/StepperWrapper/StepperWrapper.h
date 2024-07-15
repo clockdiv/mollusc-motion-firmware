@@ -31,14 +31,6 @@
 class StepperWrapper
 {
 private:
-    // AccelStepper stepper_0;
-    // AccelStepper stepper_1;
-    // AccelStepper stepper_2;
-
-    // averageFilter stepper_0_speed_filtered;
-    // averageFilter stepper_1_speed_filtered;
-    // averageFilter stepper_2_speed_filtered;
-
     averageFilter stepperSpeedFiltered[STEPPER_COUNT];
 
     const uint8_t pulsePins[STEPPER_COUNT] = {STEPPER_0_PULSE, STEPPER_1_PULSE, STEPPER_2_PULSE, STEPPER_3_PULSE};
@@ -51,13 +43,9 @@ private:
     const unsigned int minPulseWidth = 3;
 
     elapsedMillis homingTimeoutTimer;
-    const unsigned long homingTimeout = 8000;
+    const unsigned long homingTimeout = 10000;
 
 public:
-    // Bounce2::Button limit_switch_0;
-    // Bounce2::Button limit_switch_1;
-    // Bounce2::Button limit_switch_2;
-
     const uint8_t stepperCount = STEPPER_COUNT;
     AccelStepper stepper[STEPPER_COUNT];
     Bounce2::Button limitSwitch[STEPPER_COUNT];
@@ -65,7 +53,7 @@ public:
     StepperWrapper();
     void setDirPins(bool dir_step_0, bool dir_step_1, bool dir_step_2, bool dir_step_3);
     void zeroPositions();
-    void setNewStepperPositions(long *targetPositions);
+    void setNewStepperPositions(long *targetPositions, float lerp = 1.0);
     void initIdle();
     void initRunning();
     void initPlay();
@@ -78,7 +66,7 @@ public:
     void printEndSwitches();
     void runAllSpeedToPositions();
     void runAll();
-    void calcSpeed();
+    float lerp(float a, float b, float f);
 };
 
 #endif

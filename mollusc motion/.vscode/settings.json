@@ -4,5 +4,6 @@
         "*.tcc": "cpp",
         "iostream": "cpp"
     },
-    "C_Cpp.errorSquiggles": "disabled"
+    "C_Cpp.errorSquiggles": "disabled",
+    "cmake.sourceDirectory": "/Users/julian/Ernst Busch/02__PROJEKTE/20240403 mollusc motion Firmware v1.2.1/mollusc motion/.pio/libdeps/teensy41/Unity"
 }

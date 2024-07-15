@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include "../StepperWrapper/StepperWrapper.h"
+#include "../Dynamixel/Dynamixel.h"
 
 enum States
 {
@@ -23,9 +24,11 @@ private:
     static States state_old;
 
     static StepperWrapper *stepperWrapper;
+    static Dynamixel *dynamixel;
 
 public:
     static void setStepperWrapper(StepperWrapper *extStepperWrapper);
+    static void setDynamixel(Dynamixel *extDynamixel);
 
     static String getStateAsString();
     static States getState();

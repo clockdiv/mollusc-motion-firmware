@@ -10,11 +10,18 @@ const String StateManager::states[] = {"STARTUP",
 
 States StateManager::current_state = STARTUP;
 States StateManager::state_old = STARTUP;
+
 StepperWrapper *StateManager::stepperWrapper;
+Dynamixel *StateManager::dynamixel;
 
 void StateManager::setStepperWrapper(StepperWrapper *extStepperWrapper)
 {
     stepperWrapper = extStepperWrapper;
+}
+
+void StateManager::setDynamixel(Dynamixel *extDynamixel)
+{
+    dynamixel = extDynamixel;
 }
 
 String StateManager::getStateAsString()
@@ -51,9 +58,17 @@ void StateManager::handleStateChange()
             break;
         case States::HOMING_A:
             stepperWrapper->initHoming_A();
+            dynamixel->rebootDynamixels();
+            dynamixel->disableTorque();
+            dynamixel->enableLEDs();
             break;
         case States::HOMING_B:
+            stepperWrapper->zeroPositions();
             stepperWrapper->initHoming_B();
+
+            dynamixel->disableLEDs();
+            dynamixel->enableTorque();
+
             break;
         default:
             break;
@@ -95,20 +110,3 @@ void StateManager::setStateFromString(String new_state)
     }
     handleStateChange();
 }
-
-// void StateManager::handle_current_state()
-// {
-//     // Switch to IDLE if all tasks are done
-//     if (stepper_1.distanceToGo() == 0 &&
-//         stepper_2.distanceToGo() == 0 &&
-//         stepper_3.distanceToGo() == 0 &&
-//         state != IDLE &&
-//         state != HOMING_A &&
-//         state != HOMING_B)
-//     {
-//         stepper_1.setSpeed(0.0f);
-//         stepper_2.setSpeed(0.0f);
-//         stepper_3.setSpeed(0.0f);
-//         set_state(IDLE);
-//     }
-// }

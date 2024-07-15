@@ -23,7 +23,9 @@
 #include "averageFilter.h"
 
 #define HARDWARETEST false
-const char filename[] = "musk0304.bin";
+// const char filenameA[] = "sleepv01.bin";
+const char filenameA[] = "sleepv02.bin";
+const char filenameB[] = "talkv02.bin";
 
 #define BTN_A 16 // PCB v1.2
 #define BTN_B 17 // PCB v1.2
@@ -56,12 +58,20 @@ const long fps = 60;
 const long playFrameInterval = 1000000 / fps;
 
 uint32_t startFrame = 0;
-uint32_t endFrame = 66199;
+uint32_t frameCount = 0;
 uint32_t currentFrame = 0;
+
+const uint8_t stepperCount = 4;
+const uint8_t dynamixelCount = 0;
+const uint8_t neopixelCount = 0;
+const uint8_t channelCount = stepperCount + dynamixelCount + neopixelCount;
+const uint8_t keyframeDataSize = 2; // in Bytes
+
 uint16_t frameData[14];
 
-/// @brief Sets the board into error mode which can be skipped with the button A.
-/// @param errorMsg The error message to be logged.
+uint8_t stateTransitionTimeInSec = 5;
+
+// Sets the board into error mode which can be skipped with the button A.
 void error(String errorMsg)
 {
   Serial.print("STARTUP ERROR: ");
@@ -84,57 +94,70 @@ void error(String errorMsg)
   }
 }
 
-/// @brief Switches into PLAY state and sets the needed variables.
-/// @param filename
-/// @param startFrame
-/// @param endFrame
-void playCallback(/*String filename, uint32_t startFrame, uint32_t endFrame*/)
+// Switches into PLAY state and sets the needed variables.
+void playCallback(String filename /*, uint32_t startFrame, uint32_t frameCount*/)
 {
   Serial.println("PLAY CALLBACK");
-  // Serial.println(filename);
-  // Serial.println(startFrame);
-  // Serial.println(endFrame);
+
+  Serial.printf("Loading file %s form SD-Card.\n", filename.c_str());
+  if (!SDCardHelpers::initSD())
+  {
+    error("Failed initializing SD-Card");
+  }
+  else
+  {
+    SDCardHelpers::initChannels(channelCount, keyframeDataSize);
+    if (!SDCardHelpers::loadFileToExtmem(filename, frameCount))
+    {
+      error("Failed loading file to extmem.");
+    }
+    else
+    {
+      Serial.printf("playing %i frames\n", frameCount);
+    }
+  }
+
+  currentFrame = 0;
   StateManager::setState(States::PLAYING);
 }
 
-/// @brief Switches into IDLE state.
+// Switches into PAUSE state.
+// ToDo setup Pause State
 void pauseCallback()
 {
   Serial.println("PAUSE CALLBACK");
   StateManager::setState(States::IDLE);
 }
 
-/// @brief Switches into HOME state.
-void homeCallback()
+// Switches into IDLE state.
+void idleCallback()
 {
-  if (StateManager::getState() == States::IDLE)
-  {
-    Serial.println("HOME CALLBACK");
-    dynamixel.rebootDynamixels();
-    dynamixel.disableTorque();
-    dynamixel.enableLEDs();
-
-    StateManager::setState(States::HOMING_A);
-    currentFrame = 0;
-  }
-  else
-  {
-    Serial.print("Can't switch to HOME because I'm not IDLE.");
-  }
+  Serial.println("IDLE CALLBACK");
+  StateManager::setState(States::IDLE);
 }
 
+// Switches into HOME state.
+void homeCallback()
+{
+  Serial.println("HOME CALLBACK");
+  StateManager::setState(States::HOMING_A);
+}
+
+// Hardware Test Function
 bool hardwaretestButtonA()
 {
   btn_a.update();
   return btn_a.fell();
 }
 
+// Hardware Test Function
 bool hardwaretestButtonB()
 {
   btn_b.update();
   return btn_b.fell();
 }
 
+// Hardware Test Function
 bool hardwaretestInitMotors()
 {
   stepperWrapper.stepper[0].setPinsInverted(false, false, false); // direction, step, enabled
@@ -165,6 +188,7 @@ bool hardwaretestInitMotors()
   return true;
 }
 
+// Hardware Test Function
 bool hardwaretestDriveMotors()
 {
   // If at the end of travel go to the other end
@@ -178,7 +202,8 @@ bool hardwaretestDriveMotors()
 
   return false;
 }
-/// @brief Runs 11 test routines for the hardware.
+
+// Runs 11 test routines for the hardware.
 void HardwareTest()
 {
   const unsigned long timeout = 10000;
@@ -604,30 +629,14 @@ void setup()
     }
   }
 
-  /*
-
-  waitForSerialTimeout = 0;
-  while (!Serial && (waitForSerialTimeout < 5000))
-  {
-  }
+  // waitForSerialTimeout = 0;
+  // while (!Serial && (waitForSerialTimeout < 5000))
+  // {
+  // }
 
   Serial.println(F("Welcome to molluscmotion."));
 
-  Serial.println(F("Initializing SD-Card."));
-  if (!SDCardHelpers::initSD())
-  {
-    error("Failed initializing sd card");
-  }
-  else
-  {
-    Serial.print(F("Loading file: "));
-    Serial.println(filename);
-    if (!SDCardHelpers::loadFileToExtmem(filename))
-    {
-      error("Failed loading file to extmem.");
-    }
-  }
-
+  /*
   delay(100);
 
   Serial.println(F("Initializing network."));
@@ -644,13 +653,11 @@ void setup()
     NetworkHandler::registerHomeCallback(homeCallback);
   }
 
+  dynamixel.init_dxl();
+  neoPixels.init();
   */
 
   delay(100);
-
-  dynamixel.init_dxl();
-
-  // stepperWrapper.setDirPins(false, false, false, false);
 
   stepperWrapper.stepper[0].setPinsInverted(true, false, false); // direction, step, enabled
   stepperWrapper.stepper[1].setPinsInverted(false, true, false); // direction, step, enabled
@@ -659,12 +666,12 @@ void setup()
 
   stepperWrapper.stepper[0].setMaxSpeed(100);
   stepperWrapper.stepper[1].setMaxSpeed(500);
-  stepperWrapper.stepper[2].setMaxSpeed(450);
+  stepperWrapper.stepper[2].setMaxSpeed(550);
   stepperWrapper.stepper[3].setMaxSpeed(550);
 
   stepperWrapper.stepper[0].setAcceleration(20);
   stepperWrapper.stepper[1].setAcceleration(100);
-  stepperWrapper.stepper[2].setAcceleration(100);
+  stepperWrapper.stepper[2].setAcceleration(120);
   stepperWrapper.stepper[3].setAcceleration(120);
 
   stepperWrapper.stepper[0].setCurrentPosition(10000); // Body
@@ -672,11 +679,11 @@ void setup()
   stepperWrapper.stepper[2].setCurrentPosition(0);     // Head Left
   stepperWrapper.stepper[3].setCurrentPosition(0);     // Head Right
 
-  neoPixels.init();
-
   Serial.println(F("Initialization done, running."));
+
   StateManager::setStepperWrapper(&stepperWrapper);
-  StateManager::setState(IDLE);
+
+  homeCallback();
 }
 
 void loop()
@@ -698,28 +705,7 @@ void loop()
       break;
     case SerialCommand::POSITION_DATA:
       stepperWrapper.setNewStepperPositions(serialDataHandler.serialData.targetPositionsSteppers);
-      // if (String(serialDataHandler.serialData.stateAsString) == "RUNNING")
-      // {
-      //   StateManager::setState(States::RUNNING);
-      // }
-      // else if (String(serialDataHandler.serialData.stateAsString) == "MANUAL")
-      // {
-      //   StateManager::setState(States::MANUAL);
-      // }
-
       // dynamixel.setNewDynamixelPositions(serialDataHandler.serialData.targetPositionsServos);
-      //     if (state == RUNNING)
-      //     {
-      //         // TODO enable again!
-      //         float speed_stepper_1 = stepper_0_speed_filtered.filter(fps * float(stepper_0.distanceToGo()) * 0.1f);
-      //         stepper_0.setSpeed(speed_stepper_1);
-      //         // TODO enable again!
-      //         float speed_stepper_2 = stepper_1_speed_filtered.filter(fps * float(stepper_1.distanceToGo()) * 0.1f);
-      //         stepper_1.setSpeed(speed_stepper_2);
-      //         // TODO enable again!
-      //         float speed_stepper_3 = stepper_2_speed_filtered.filter(fps * float(stepper_2.distanceToGo()) * 0.1f);
-      //         stepper_2.setSpeed(speed_stepper_3);
-      //     }
       break;
     default:
       break;
@@ -728,39 +714,22 @@ void loop()
 
   if (btn_a.fell())
   {
-    if (StateManager::getState() == IDLE)
-    {
-      StateManager::setState(States::PLAYING);
-    }
-    else if (StateManager::getState() == States::PLAYING)
-    {
-      StateManager::setState(States::IDLE);
-    }
-    // if (StateManager::getState() == HOMING_A || StateManager::getState() == HOMING_B)
+    Serial.println("Button A triggered");
+    playCallback(filenameB);
+
+    // if (StateManager::getState() == IDLE)
     // {
-    //   StateManager::setState(States::IDLE);
+    //   playCallback(filenameB);
     // }
-    // else
+    // else if (StateManager::getState() == States::PLAYING)
     // {
-    //   StateManager::setState(States::HOMING_A);
+    //   pauseCallback();
     // }
   }
 
   if (btn_b.fell())
   {
-    if (StateManager::getState() == States::IDLE)
-    {
-      dynamixel.rebootDynamixels();
-      dynamixel.disableTorque();
-      dynamixel.enableLEDs();
-
-      StateManager::setState(States::HOMING_A);
-    }
-    else if (StateManager::getState() == HOMING_A || StateManager::getState() == HOMING_B)
-    {
-      currentFrame = 0;
-      StateManager::setState(States::IDLE);
-    }
+    homeCallback();
   }
 
   // NetworkHandler::updateIncomingOSC();
@@ -775,6 +744,10 @@ void loop()
       digitalWriteFast(LED_BUILTIN, LED_BUILTIN_STATE);
       ledBlinkTimer = 0;
     }
+
+    // Bloch-Specific: Start playback with sleeping-animation
+    playCallback(filenameA);
+
     break;
 
   case States::PLAYING:
@@ -789,13 +762,13 @@ void loop()
       // }
       // Serial.println();
 
-      for (uint8_t i = 0; i < 4; i++)
+      for (uint8_t i = 0; i < stepperCount; i++)
       {
         serialDataHandler.serialData.targetPositionsSteppers[i] = long(frameData[i]);
       }
-      // for (uint8_t i = 0; i < 11; i++)
+      // for (uint8_t i = 0; i < dynamixelCount; i++)
       // {
-      //   serialDataHandler.serialData.targetPositionsServos[i] = long(frameData[i + 3]);
+      //   serialDataHandler.serialData.targetPositionsServos[i] = long(frameData[i + stepperCount]);
       // }
 
       /*
@@ -814,14 +787,16 @@ void loop()
       }
       Serial.println();
       */
-
-      stepperWrapper.setNewStepperPositions(serialDataHandler.serialData.targetPositionsSteppers);
+      float lerp = float(currentFrame) / float(stateTransitionTimeInSec * fps);
+      if (lerp > 1)
+        lerp = 1.0;
+      stepperWrapper.setNewStepperPositions(serialDataHandler.serialData.targetPositionsSteppers, lerp);
       // dynamixel.setNewDynamixelPositions(serialDataHandler.serialData.targetPositionsServos);
 
       currentFrame++;
-      if (currentFrame >= endFrame)
+      if (currentFrame >= frameCount)
       {
-        StateManager::setState(States::IDLE);
+        idleCallback();
       }
     }
     stepperWrapper.runAllSpeedToPositions();
@@ -849,17 +824,10 @@ void loop()
     break;
 
   case States::HOMING_A:
-    // if (ledBlinkTimer > ledBlinkIntervalIdleState / 16)
-    // {
-    //   LED_BUILTIN_STATE = !LED_BUILTIN_STATE;
-    //   digitalWriteFast(LED_BUILTIN, LED_BUILTIN_STATE);
-    //   ledBlinkTimer = 0;
-    //   stepperWrapper.printEndSwitches();
-    // }
 
     if (stepperWrapper.driveHoming_A())
     {
-      stepperWrapper.zeroPositions();
+      // stepperWrapper.zeroPositions();
       StateManager::setState(States::HOMING_B);
     }
     break;
@@ -868,10 +836,10 @@ void loop()
     if (stepperWrapper.driveHoming_B())
     {
       // stepperWrapper.zeroPositions();
-      dynamixel.disableLEDs();
-      dynamixel.enableTorque();
-
-      StateManager::setState(States::IDLE);
+      // dynamixel.disableLEDs();
+      // dynamixel.enableTorque();
+      // StateManager::setState(States::IDLE);
+      idleCallback();
     }
     break;
 
@@ -888,7 +856,11 @@ void loop()
   if (debugMessageTimer > debugMessageInterval)
   {
     debugMessageTimer = 0;
-    Serial.print("State: ");
-    Serial.println(StateManager::getStateAsString());
+    Serial.printf("State: %s", StateManager::getStateAsString().c_str());
+    if (StateManager::getState() == States::PLAYING)
+    {
+      Serial.printf("\tFrame: %d", currentFrame);
+    }
+    Serial.println();
   }
 }
